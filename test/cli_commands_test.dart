@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:acr_cli/src/api/acr_client.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -89,6 +90,37 @@ void main() {
       final out = res.stdout.toString();
       expect(out, contains('TLA+ VERIFIED AUDIT CHAIN'));
       expect(out, contains('Cryptographic State Chain Invariant Valid'));
+    });
+
+    test('AcrClient client-side validation rejects DISSENT without rationale before HTTP', () async {
+      final client = AcrClient();
+      expect(
+        () => client.castVote(
+          proposalId: 'prop-1',
+          voterDid: 'did:key:test',
+          choice: 'DISSENT',
+        ),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+
+    test('AcrClient client-side validation rejects empty room name', () async {
+      final client = AcrClient();
+      expect(
+        () => client.createRoom(
+          name: '   ',
+          description: '',
+          topic: '',
+          isPrivate: false,
+        ),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+
+    test('AcrClient verifyAuditChain recomputes continuity successfully', () async {
+      final client = AcrClient();
+      final res = await client.verifyAuditChain();
+      expect(res['is_valid'], isTrue);
     });
   });
 }

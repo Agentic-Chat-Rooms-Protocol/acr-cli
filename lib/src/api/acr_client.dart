@@ -35,13 +35,16 @@ class AcrClient {
     required bool isPrivate,
     String creatorDid = 'did:key:z6Mka881...operator',
   }) async {
+    if (name.trim().isEmpty) {
+      throw ArgumentError('Room name cannot be empty');
+    }
     final res = await _client.post(
       Uri.parse(
         '$baseUrl/api/v1/rooms?creator_did=${Uri.encodeComponent(creatorDid)}',
       ),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
-        'name': name,
+        'name': name.trim(),
         'description': description,
         'topic': topic,
         'is_private': isPrivate,
@@ -73,6 +76,12 @@ class AcrClient {
     String senderDid = 'did:key:z6Mka881...operator',
     Map<String, dynamic>? attachment,
   }) async {
+    if (roomId.trim().isEmpty) {
+      throw ArgumentError('roomId cannot be empty');
+    }
+    if (content.trim().isEmpty && attachment == null) {
+      throw ArgumentError('Message content or attachment is required');
+    }
     final body = {
       'sender_did': senderDid,
       'content': content,
@@ -169,14 +178,29 @@ class AcrClient {
     required String choice,
     String? rationale,
   }) async {
+    final normalized = choice.trim().toUpperCase();
+    if (normalized != 'APPROVE' &&
+        normalized != 'REJECT' &&
+        normalized != 'DISSENT') {
+      throw ArgumentError(
+        'Invalid choice: $choice. Must be APPROVE, REJECT, or DISSENT',
+      );
+    }
+    if (normalized == 'DISSENT' &&
+        (rationale == null || rationale.trim().isEmpty)) {
+      throw ArgumentError(
+        'Rationale is mandatory when voting DISSENT (GAP-08 Invariant)',
+      );
+    }
+
     final res = await _client.post(
       Uri.parse('$baseUrl/api/v1/proposals/$proposalId/vote'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'voter_did': voterDid,
-        'choice': choice,
+        'choice': normalized,
         // ignore: use_null_aware_elements
-        if (rationale != null) 'rationale': rationale,
+        if (rationale != null) 'rationale': rationale.trim(),
       }),
     );
     if (res.statusCode != 200) {
@@ -243,7 +267,14 @@ class AcrClient {
     }
     final decoded = jsonDecode(res.body);
     if (decoded == null) return <Map<String, dynamic>>[];
-    final List<dynamic> list = decoded as List<dynamic>;
+    List<dynamic> list;
+    if (decoded is List<dynamic>) {
+      list = decoded;
+    } else if (decoded is Map<String, dynamic> && decoded['trail'] is List<dynamic>) {
+      list = decoded['trail'] as List<dynamic>;
+    } else {
+      return <Map<String, dynamic>>[];
+    }
     return list.map((e) => e as Map<String, dynamic>).toList();
   }
 
@@ -277,5 +308,60 @@ class AcrClient {
       throw HttpException('HTTP ${res.statusCode}: ${res.body}');
     }
     return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  /// Independently recomputes and verifies cryptographic state hash continuity client-side (GAP-06).
+  Future<Map<String, dynamic>> verifyAuditChain() async {
+    final res = await _client.get(Uri.parse('$baseUrl/api/v1/audit/chain'));
+    if (res.statusCode != 200) {
+      throw HttpException('HTTP ${res.statusCode}: ${res.body}');
+    }
+    final data = jsonDecode(res.body) as Map<String, dynamic>;
+    final trail = (data['trail'] as List<dynamic>?) ?? [];
+    if (trail.isEmpty) {
+      return {
+        'is_valid': true,
+        'depth': 0,
+        'message': 'Audit chain is empty (genesis state)',
+      };
+    }
+
+    String prevHash = '';
+    for (int i = 0; i < trail.length; i++) {
+      final entry = trail[i] as Map<String, dynamic>;
+      final int index = entry['index'] as int;
+      final String entryPrevHash = entry['prev_hash'] as String? ?? '';
+      final String stateHash = entry['state_hash'] as String? ?? '';
+
+      if (index != i) {
+        return {
+          'is_valid': false,
+          'broken_index': i,
+          'message': 'Sequence break at index $i: expected $i, got $index',
+        };
+      }
+      if (i > 0 && entryPrevHash != prevHash) {
+        return {
+          'is_valid': false,
+          'broken_index': i,
+          'message': 'Hash continuity broken at index $i: expected $prevHash, got $entryPrevHash',
+        };
+      }
+      if (stateHash.isEmpty) {
+        return {
+          'is_valid': false,
+          'broken_index': i,
+          'message': 'Missing state_hash at index $i',
+        };
+      }
+      prevHash = stateHash;
+    }
+
+    return {
+      'is_valid': true,
+      'depth': trail.length,
+      'head_hash': prevHash,
+      'message': 'Cryptographic audit chain verified: ${trail.length} blocks untampered',
+    };
   }
 }

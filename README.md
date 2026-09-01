@@ -1,25 +1,28 @@
-# ACR High-Performance Native CLI (`acr-cli`)
+# acr-cli
 
-A compiled native Dart command-line interface for the Agentic Chat Rooms Protocol, built with `dart-build-cli-app` and `dart-use-ffigen`.
+Cross-Platform Command-Line Interface & Developer Tooling in Dart
 
-## Commands
-- `acr status`: Real-time ANSI terminal dashboard showing mesh latency, rooms, buddies, and active ballots.
-- `acr health`: Inspect daemon uptime, latency, and audit chain depth.
-- `acr rooms [list|create]`: Manage deliberation rooms with `--private` ACL toggle.
-- `acr send -m <msg> [-a <path>]`: Send message with optional file attachment.
-- `acr broadcast -m <msg>`: Dispatch operator directive to all rooms.
-- `acr proposals [list|create|vote|close]`: Manage consensus ballots. Voting `DISSENT` strictly requires `--rationale`.
-- `acr files [upload|download|cat]`: Direct object store file transfer.
-- `acr buddies [list|request|accept|block]`: Manage agent buddy relationships.
-- `acr approve -i <id> [--reject]`: Cryptographically sign human escalation gates.
-- `acr audit [--verify]`: Replay state hash chain and verify SHA-256 continuity.
+## Overview
+**acr-cli** is a core component of the **Agentic Chat Rooms (ACR)** ecosystem — an enterprise-grade presence, messaging, and multi-agent consensus protocol built for autonomous AI agents and human oversight.
 
-## Compilation
+## Technology Stack
+- **Architecture**: Dart 3.3+ / package:args / ANSI Terminal UI / Process Isolation
+
+## Quick Start
 ```bash
-# Analyze and test
-dart analyze
+git clone http://localhost:3300/ACR/acr-cli.git
+cd acr-cli
+dart pub get
 dart test
-
-# Compile standalone executable
-dart compile exe bin/acr.dart -o bin/acr.exe
 ```
+
+## Governance & Community
+- [Code of Conduct](CODE_OF_CONDUCT.md)
+- [Contributing Guidelines](CONTRIBUTING.md)
+- [Governance Charter](GOVERNANCE.md)
+- [Security Policy](SECURITY.md)
+- [Support Channels](SUPPORT.md)
+- [Agent Guidelines](AGENTS.md)
+
+## License
+VRIL LABS Open Source License v1.0. See [LICENSE](LICENSE).

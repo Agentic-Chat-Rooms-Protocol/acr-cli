@@ -24,6 +24,7 @@ class MetaMcpCommand extends Command<int> {
     addSubcommand(MetaMcpToggleCommand(enable: false));
     addSubcommand(MetaMcpToolsCommand());
     addSubcommand(MetaMcpCallCommand());
+    addSubcommand(MetaMcpVaultCommand());
     addSubcommand(MetaMcpAuditCommand());
   }
 
@@ -305,7 +306,6 @@ class MetaMcpAuditCommand extends Command<int> {
 
         stdout.writeln('  [$ts] $event | $status | $actor -> $target ($latency)');
       }
-      stdout.writeln('');
       return ExitCode.success.code;
     } catch (e) {
       stderr.writeln(red.wrap('[ERROR] Meta-MCP Proxy unreachable at $metaUrl: $e'));
@@ -313,3 +313,105 @@ class MetaMcpAuditCommand extends Command<int> {
     }
   }
 }
+
+class MetaMcpVaultCommand extends Command<int> {
+  @override
+  final String name = 'vault';
+
+  @override
+  final String description = 'Manage encrypted Auth Vault credentials (SQLite3MultipleCiphers & SQLCipher).';
+
+  MetaMcpVaultCommand() {
+    argParser.addOption('action', abbr: 'a', defaultsTo: 'list', allowed: ['list', 'set', 'delete', 'rotate']);
+    argParser.addOption('server', abbr: 's', help: 'Server ID for secret');
+    argParser.addOption('key', abbr: 'k', help: 'Secret key identifier');
+    argParser.addOption('value', abbr: 'v', help: 'Secret plaintext value');
+    argParser.addOption('domain', abbr: 'd', defaultsTo: 'personal', allowed: ['personal', 'org', 'enterprise', 'ephemeral']);
+    argParser.addOption('cipher', abbr: 'c', defaultsTo: 'aes-256-gcm', allowed: ['aes-256-gcm', 'chacha20-poly1305', 'sqlcipher-v4']);
+    argParser.addOption('ref-id', help: 'Ref ID for deletion');
+    argParser.addOption('new-secret', help: 'New master passphrase for rotation');
+  }
+
+  @override
+  Future<int> run() async {
+    final metaUrl = Platform.environment['ACR_META_MCP_URL'] ?? 'http://localhost:20445';
+    final action = argResults?['action'] as String? ?? (argResults?.rest.isNotEmpty == true ? argResults!.rest.first : 'list');
+
+    try {
+      if (action == 'list') {
+        final res = await http.get(Uri.parse('$metaUrl/api/v1/meta-mcp/vault/secrets'));
+        if (res.statusCode != 200) {
+          stderr.writeln(red.wrap('[ERROR] Failed to list vault secrets: HTTP ${res.statusCode}'));
+          return ExitCode.software.code;
+        }
+
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        final secrets = (data['secrets'] as List<dynamic>?) ?? [];
+
+        stdout.writeln('\n${cyan.wrap('======================================================================')}');
+        stdout.writeln(bold.wrap(' ACR META-MCP AUTH VAULT — ENCRYPTED SECRETS'));
+        stdout.writeln('${cyan.wrap('======================================================================')}');
+
+        if (secrets.isEmpty) {
+          stdout.writeln(darkGray.wrap('  (No secrets stored in vault)'));
+        } else {
+          for (final s in secrets) {
+            final domain = '[${s['domain'] ?? 'personal'}]'.padRight(12);
+            final refId = (s['refId'] as String? ?? '').padRight(32);
+            final serverId = (s['serverId'] as String? ?? '').padRight(18);
+            final cipher = s['algorithm'] ?? 'aes-256-gcm';
+            stdout.writeln('  ${magenta.wrap(domain)} ${bold.wrap(refId)} | $serverId | Cipher: $cipher');
+          }
+        }
+        stdout.writeln('\nTotal: ${secrets.length} vaulted credentials\n');
+        return ExitCode.success.code;
+      } else if (action == 'set') {
+        final server = argResults?['server'] as String? ?? (argResults?.rest.length ?? 0 > 1 ? argResults!.rest[1] : null);
+        final key = argResults?['key'] as String? ?? (argResults?.rest.length ?? 0 > 2 ? argResults!.rest[2] : null);
+        final value = argResults?['value'] as String? ?? (argResults?.rest.length ?? 0 > 3 ? argResults!.rest[3] : null);
+        final domain = argResults?['domain'] as String? ?? 'personal';
+        final cipher = argResults?['cipher'] as String? ?? 'aes-256-gcm';
+
+        if (server == null || key == null || value == null) {
+          stderr.writeln(yellow.wrap('Usage: acr meta-mcp vault --action=set --server=<id> --key=<key> --value=<val>'));
+          return ExitCode.usage.code;
+        }
+
+        final res = await http.post(
+          Uri.parse('$metaUrl/api/v1/meta-mcp/vault/secrets'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'serverId': server, 'key': key, 'value': value, 'domain': domain, 'cipher': cipher}),
+        );
+        stdout.writeln(green.wrap('[SUCCESS] Stored secret in encrypted vault: ${res.body}'));
+        return ExitCode.success.code;
+      } else if (action == 'delete') {
+        final refId = argResults?['ref-id'] as String? ?? (argResults?.rest.length ?? 0 > 1 ? argResults!.rest[1] : null);
+        if (refId == null) {
+          stderr.writeln(yellow.wrap('Usage: acr meta-mcp vault --action=delete --ref-id=<ref_id>'));
+          return ExitCode.usage.code;
+        }
+        final res = await http.delete(Uri.parse('$metaUrl/api/v1/meta-mcp/vault/secrets/$refId'));
+        stdout.writeln(green.wrap('[SUCCESS] Deleted secret from vault: ${res.body}'));
+        return ExitCode.success.code;
+      } else if (action == 'rotate') {
+        final newSecret = argResults?['new-secret'] as String? ?? (argResults?.rest.length ?? 0 > 1 ? argResults!.rest[1] : null);
+        if (newSecret == null) {
+          stderr.writeln(yellow.wrap('Usage: acr meta-mcp vault --action=rotate --new-secret=<passphrase>'));
+          return ExitCode.usage.code;
+        }
+        final res = await http.post(
+          Uri.parse('$metaUrl/api/v1/meta-mcp/vault/rotate'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'newMasterSecret': newSecret}),
+        );
+        stdout.writeln(green.wrap('[SUCCESS] Vault master passphrase rotated: ${res.body}'));
+        return ExitCode.success.code;
+      }
+      return ExitCode.success.code;
+    } catch (e) {
+      stderr.writeln(red.wrap('[ERROR] Vault operation failed: $e'));
+      return ExitCode.unavailable.code;
+    }
+  }
+}
+

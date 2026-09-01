@@ -8,7 +8,7 @@ class TunnelCommand extends Command<void> {
     argParser
       ..addOption(
         'cloud-url',
-        defaultsTo: 'http://143.198.98.229:20443',
+        defaultsTo: Platform.environment['ACR_CLOUD_URL'] ?? 'https://cloud.agentchatrooms.dev',
         help: 'ACR Cloud relay node URL',
       )
       ..addOption(
@@ -47,7 +47,7 @@ class TunnelCommand extends Command<void> {
     stdout.writeln('----------------------------------------------------------------------');
     stdout.writeln('\x1B[1;32m[OK] Outbound WebSocket handshaking with ACR Cloud mesh...\x1B[0m');
     stdout.writeln('Session Token  : acr_tn_${DateTime.now().millisecondsSinceEpoch.toRadixString(16)}');
-    stdout.writeln('Public URL     : https://cloud.acr.chat/#/app?room=$room');
+    stdout.writeln('Public URL     : $cloudUrl/#/app?room=$room');
     stdout.writeln('======================================================================');
     stdout.writeln('Press Ctrl+C to close reverse tunnel.');
   }

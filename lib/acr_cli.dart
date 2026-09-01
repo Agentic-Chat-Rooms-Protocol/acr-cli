@@ -14,4 +14,5 @@ export 'src/commands/approve_command.dart';
 export 'src/commands/audit_command.dart';
 export 'src/commands/config_command.dart';
 export 'src/commands/tunnel_command.dart';
+export 'src/commands/meta_mcp_command.dart';
 export 'src/third_party/acr_crypto.g.dart';

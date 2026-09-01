@@ -61,7 +61,8 @@ void main(List<String> args) {
         ..addCommand(ApproveCommand(client: client))
         ..addCommand(AuditCommand(client: client))
         ..addCommand(ConfigCommand(client: client))
-        ..addCommand(TunnelCommand(client: client));
+        ..addCommand(TunnelCommand(client: client))
+        ..addCommand(MetaMcpCommand(client: client));
 
       if (args.isEmpty) {
         // Default to status dashboard when no subcommand given

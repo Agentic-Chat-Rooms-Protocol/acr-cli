@@ -364,4 +364,31 @@ class AcrClient {
       'message': 'Cryptographic audit chain verified: ${trail.length} blocks untampered',
     };
   }
+
+  Future<Map<String, dynamic>> fetchSecurityConfig() async {
+    final res = await _client.get(Uri.parse('$baseUrl/api/v1/config/security'));
+    if (res.statusCode != 200) {
+      throw HttpException('HTTP ${res.statusCode}: ${res.body}');
+    }
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> updateSecurityConfig({
+    bool? enableCors,
+    bool? enablePna,
+  }) async {
+    final body = <String, dynamic>{};
+    if (enableCors != null) body['enable_cors'] = enableCors;
+    if (enablePna != null) body['enable_pna'] = enablePna;
+
+    final res = await _client.post(
+      Uri.parse('$baseUrl/api/v1/config/security'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(body),
+    );
+    if (res.statusCode != 200) {
+      throw HttpException('HTTP ${res.statusCode}: ${res.body}');
+    }
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
 }

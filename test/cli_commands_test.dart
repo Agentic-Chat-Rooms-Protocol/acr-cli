@@ -23,6 +23,8 @@ void main() {
       expect(out, contains('buddies'));
       expect(out, contains('approve'));
       expect(out, contains('audit'));
+      expect(out, contains('config'));
+      expect(out, contains('tunnel'));
     });
 
     test('Prints version flag correctly', () async {
@@ -121,6 +123,17 @@ void main() {
       final client = AcrClient();
       final res = await client.verifyAuditChain();
       expect(res['is_valid'], isTrue);
+    });
+
+    test('Queries and updates security config via AcrClient', () async {
+      final client = AcrClient();
+      final config = await client.fetchSecurityConfig();
+      expect(config.containsKey('enable_cors'), isTrue);
+      expect(config.containsKey('enable_pna'), isTrue);
+
+      final updated = await client.updateSecurityConfig(enableCors: true, enablePna: true);
+      expect(updated['enable_cors'], isTrue);
+      expect(updated['enable_pna'], isTrue);
     });
   });
 }

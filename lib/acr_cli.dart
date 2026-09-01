@@ -12,4 +12,6 @@ export 'src/commands/files_command.dart';
 export 'src/commands/buddies_command.dart';
 export 'src/commands/approve_command.dart';
 export 'src/commands/audit_command.dart';
+export 'src/commands/config_command.dart';
+export 'src/commands/tunnel_command.dart';
 export 'src/third_party/acr_crypto.g.dart';

@@ -59,7 +59,9 @@ void main(List<String> args) {
         ..addCommand(FilesCommand(client: client))
         ..addCommand(BuddiesCommand(client: client))
         ..addCommand(ApproveCommand(client: client))
-        ..addCommand(AuditCommand(client: client));
+        ..addCommand(AuditCommand(client: client))
+        ..addCommand(ConfigCommand(client: client))
+        ..addCommand(TunnelCommand(client: client));
 
       if (args.isEmpty) {
         // Default to status dashboard when no subcommand given

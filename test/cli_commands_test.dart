@@ -25,6 +25,7 @@ void main() {
       expect(out, contains('audit'));
       expect(out, contains('config'));
       expect(out, contains('tunnel'));
+      expect(out, contains('opsroom'));
     });
 
     test('Prints version flag correctly', () async {
@@ -34,7 +35,7 @@ void main() {
       );
 
       expect(res.exitCode, equals(0));
-      expect(res.stdout.toString(), contains('0.8.2'));
+      expect(res.stdout.toString(), contains('0.9.0'));
     });
 
     test('Rejects dissent voting without rationale with exit code 64', () async {

@@ -391,4 +391,55 @@ class AcrClient {
     }
     return jsonDecode(res.body) as Map<String, dynamic>;
   }
+
+  Future<Map<String, dynamic>> fetchOpsRoomStatus() async {
+    final res = await _client.get(Uri.parse('$baseUrl/api/v1/opsroom/status'));
+    if (res.statusCode != 200) {
+      throw HttpException('HTTP ${res.statusCode}: ${res.body}');
+    }
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> fetchOpsRoomBattlecard() async {
+    final res = await _client.get(Uri.parse('$baseUrl/api/v1/opsroom/battlecard'));
+    if (res.statusCode != 200) {
+      throw HttpException('HTTP ${res.statusCode}: ${res.body}');
+    }
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> triggerOpsRoomIncident({
+    String preset = 'replication_stall',
+    String? customTitle,
+    String? customDesc,
+  }) async {
+    final body = <String, dynamic>{'preset': preset};
+    if (customTitle != null) body['title'] = customTitle;
+    if (customDesc != null) body['description'] = customDesc;
+
+    final res = await _client.post(
+      Uri.parse('$baseUrl/api/v1/opsroom/incidents/trigger'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(body),
+    );
+    if (res.statusCode != 200 && res.statusCode != 201) {
+      throw HttpException('HTTP ${res.statusCode}: ${res.body}');
+    }
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> executeOpsRoomPlan(
+    String incidentId, {
+    bool humanApproved = true,
+  }) async {
+    final res = await _client.post(
+      Uri.parse('$baseUrl/api/v1/opsroom/incidents/$incidentId/execute'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'human_approved': humanApproved}),
+    );
+    if (res.statusCode != 200) {
+      throw HttpException('HTTP ${res.statusCode}: ${res.body}');
+    }
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
 }

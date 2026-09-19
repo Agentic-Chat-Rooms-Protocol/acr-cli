@@ -5,7 +5,7 @@ import 'package:io/io.dart';
 import 'package:stack_trace/stack_trace.dart';
 import 'package:acr_cli/acr_cli.dart';
 
-const String acrCliVersion = '0.8.2';
+const String acrCliVersion = '0.9.0';
 
 void main(List<String> args) {
   Chain.capture(
@@ -63,7 +63,8 @@ void main(List<String> args) {
         ..addCommand(ConfigCommand(client: client))
         ..addCommand(TunnelCommand(client: client))
         ..addCommand(MetaMcpCommand(client: client))
-        ..addCommand(PortsCommand(client: client));
+        ..addCommand(PortsCommand(client: client))
+        ..addCommand(OpsRoomCommand(client: client));
 
       if (args.isEmpty) {
         // Default to status dashboard when no subcommand given

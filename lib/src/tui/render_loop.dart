@@ -44,9 +44,21 @@ class AdaptiveRenderLoop {
   }
 
   /// Marks the state as dirty, immediately waking or resetting interval to fast 66ms rate.
-  void markDirty() {
+  void markDirty({bool wakeImmediately = false}) {
     _isDirty = true;
     _currentInterval = minInterval;
+    if (_isRunning && _timer != null) {
+      _timer?.cancel();
+      if (wakeImmediately) {
+        _timer = Timer(Duration.zero, () {
+          if (!_isRunning) return;
+          tick();
+          _scheduleNext();
+        });
+      } else {
+        _scheduleNext();
+      }
+    }
   }
 
   /// Starts the asynchronous loop.

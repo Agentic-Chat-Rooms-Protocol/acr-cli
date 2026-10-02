@@ -89,5 +89,30 @@ void main() {
       expect(metrics['min_interval_ms'], equals(66));
       expect(metrics['max_interval_ms'], equals(500));
     });
+
+    test('Reschedules active timer to fast rate when markDirty called while running', () async {
+      int renderCount = 0;
+      final loop = AdaptiveRenderLoop(
+        minInterval: const Duration(milliseconds: 10),
+        maxInterval: const Duration(milliseconds: 100),
+        onRender: () => renderCount++,
+      );
+
+      loop.start();
+      expect(loop.isRunning, isTrue);
+
+      // Allow a couple clean cycles to back off
+      await Future<void>.delayed(const Duration(milliseconds: 40));
+      expect(loop.skippedFrames, greaterThan(0));
+
+      // Mark dirty while running with immediate wake
+      loop.markDirty(wakeImmediately: true);
+      await Future<void>.delayed(const Duration(milliseconds: 15));
+      expect(renderCount, greaterThanOrEqualTo(1));
+      expect(loop.renderedFrames, greaterThanOrEqualTo(1));
+
+      loop.stop();
+      expect(loop.isRunning, isFalse);
+    });
   });
 }

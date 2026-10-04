@@ -100,7 +100,7 @@ void main() {
     test('prList constructs exact argument vector', () async {
       fakeExecutor.setResponse(
         'gh',
-        ['pr', 'list', '--repo', 'owner/repo', '--json', 'number,title,state,author,headRefName,baseRefName,createdAt'],
+        ['pr', 'list', '--repo', 'owner/repo', '--json', 'number,title,state,author,headRefName,baseRefName,createdAt,mergeable'],
         ProcessResult(
           0,
           0,
@@ -111,6 +111,7 @@ void main() {
               'state': 'OPEN',
               'headRefName': 'feat/vcs',
               'baseRefName': 'main',
+              'mergeable': 'MERGEABLE',
             }
           ]),
           '',
@@ -121,6 +122,8 @@ void main() {
       expect(prs.length, equals(1));
       expect(prs.first['number'], equals(15));
       expect(prs.first['headRefName'], equals('feat/vcs'));
+      expect(prs.first['head_ref_name'], equals('feat/vcs'));
+      expect(prs.first['mergeable'], equals('MERGEABLE'));
     });
 
     test('prCreate and prComment construct arguments correctly', () async {
@@ -244,6 +247,30 @@ void main() {
         () => driver.jjStatus(),
         throwsA(isA<ProcessException>()),
       );
+    });
+
+    test('jjLogChanges parses structured JujutsuChange records', () async {
+      fakeExecutor.defaultResult = ProcessResult(
+        0,
+        0,
+        'change1\tcommit1\ttrue\tfeat: first change\nchange2\tcommit2\tfalse\tfix: bugfix\n',
+        '',
+      );
+
+      final changes = await driver.jjLogChanges(limit: 5);
+      expect(changes.length, equals(2));
+      expect(changes[0].changeId, equals('change1'));
+      expect(changes[0].commitId, equals('commit1'));
+      expect(changes[0].isWorkingCopy, isTrue);
+      expect(changes[0].description, equals('feat: first change'));
+      expect(changes[1].changeId, equals('change2'));
+      expect(changes[1].isWorkingCopy, isFalse);
+      expect(changes[1].description, equals('fix: bugfix'));
+
+      expect(fakeExecutor.invocations.first.arguments[0], equals('log'));
+      expect(fakeExecutor.invocations.first.arguments[1], equals('-T'));
+      expect(fakeExecutor.invocations.first.arguments[3], equals('-n'));
+      expect(fakeExecutor.invocations.first.arguments[4], equals('5'));
     });
   });
 }

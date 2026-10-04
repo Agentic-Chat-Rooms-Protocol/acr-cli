@@ -7,7 +7,7 @@ import 'package:io/ansi.dart';
 import 'package:io/io.dart';
 import '../api/acr_client.dart';
 
-class MetaMcpCommand extends Command<int> {
+class MetaMcpCommand extends Command {
   @override
   final String name = 'meta-mcp';
 
@@ -35,7 +35,7 @@ class MetaMcpCommand extends Command<int> {
   }
 }
 
-class MetaMcpListCommand extends Command<int> {
+class MetaMcpListCommand extends Command {
   @override
   final String name = 'list';
 
@@ -56,7 +56,7 @@ class MetaMcpListCommand extends Command<int> {
       final servers = (data['servers'] as List<dynamic>?) ?? [];
 
       stdout.writeln('\n${cyan.wrap('======================================================================')}');
-      stdout.writeln(bold.wrap(' ACR META-MCP FORWARD PROXY — REGISTERED SERVERS'));
+      stdout.writeln(styleBold.wrap(' ACR META-MCP FORWARD PROXY — REGISTERED SERVERS'));
       stdout.writeln('${cyan.wrap('======================================================================')}');
 
       if (servers.isEmpty) {
@@ -66,7 +66,6 @@ class MetaMcpListCommand extends Command<int> {
           final id = s['id'] as String;
           final enabled = s['enabled'] as bool? ?? true;
           final quarantined = s['quarantined'] as bool? ?? false;
-          final health = s['healthStatus'] as String? ?? 'OFFLINE';
           final transport = s['transport'] as String? ?? 'stdio';
           final displayName = s['displayName'] as String? ?? id;
           final tools = s['toolCount'] ?? 0;
@@ -75,7 +74,7 @@ class MetaMcpListCommand extends Command<int> {
               ? red.wrap('[DISABLED]')
               : (quarantined ? yellow.wrap('[QUARANTINE]') : green.wrap('[ONLINE]'));
 
-          stdout.writeln('  $badge ${bold.wrap(id.padRight(22))} | ${transport.padRight(16)} | $displayName ($tools tools)');
+          stdout.writeln('  $badge ${styleBold.wrap(id.padRight(22))} | ${transport.padRight(16)} | $displayName ($tools tools)');
         }
       }
       stdout.writeln('\nTotal: ${servers.length} servers registered\n');
@@ -87,7 +86,7 @@ class MetaMcpListCommand extends Command<int> {
   }
 }
 
-class MetaMcpImportCommand extends Command<int> {
+class MetaMcpImportCommand extends Command {
   @override
   final String name = 'import';
 
@@ -141,7 +140,7 @@ class MetaMcpImportCommand extends Command<int> {
   }
 }
 
-class MetaMcpToggleCommand extends Command<int> {
+class MetaMcpToggleCommand extends Command {
   final bool enable;
 
   @override
@@ -183,7 +182,7 @@ class MetaMcpToggleCommand extends Command<int> {
   }
 }
 
-class MetaMcpToolsCommand extends Command<int> {
+class MetaMcpToolsCommand extends Command {
   @override
   final String name = 'tools';
 
@@ -210,14 +209,14 @@ class MetaMcpToolsCommand extends Command<int> {
       final tools = (data['tools'] as List<dynamic>?) ?? [];
 
       stdout.writeln('\n${cyan.wrap('======================================================================')}');
-      stdout.writeln(bold.wrap(' ACR META-MCP TOOL CATALOG (${view.toUpperCase()})'));
+      stdout.writeln(styleBold.wrap(' ACR META-MCP TOOL CATALOG (${view.toUpperCase()})'));
       stdout.writeln('${cyan.wrap('======================================================================')}');
 
       for (final t in tools) {
         final name = t['name'] as String;
         final serverId = t['serverId'] as String? ?? 'default';
         final desc = t['description'] as String? ?? '';
-        stdout.writeln('  • ${bold.wrap(name.padRight(34))} | ${darkGray.wrap('[$serverId]')} $desc');
+        stdout.writeln('  • ${styleBold.wrap(name.padRight(34))} | ${darkGray.wrap('[$serverId]')} $desc');
       }
       stdout.writeln('\nTotal tools: ${tools.length}\n');
       return ExitCode.success.code;
@@ -228,7 +227,7 @@ class MetaMcpToolsCommand extends Command<int> {
   }
 }
 
-class MetaMcpCallCommand extends Command<int> {
+class MetaMcpCallCommand extends Command {
   @override
   final String name = 'call';
 
@@ -272,7 +271,7 @@ class MetaMcpCallCommand extends Command<int> {
   }
 }
 
-class MetaMcpAuditCommand extends Command<int> {
+class MetaMcpAuditCommand extends Command {
   @override
   final String name = 'audit';
 
@@ -293,7 +292,7 @@ class MetaMcpAuditCommand extends Command<int> {
       final logs = (data['logs'] as List<dynamic>?) ?? [];
 
       stdout.writeln('\n${cyan.wrap('======================================================================')}');
-      stdout.writeln(bold.wrap(' ACR META-MCP REPLAY AUDIT TRAIL'));
+      stdout.writeln(styleBold.wrap(' ACR META-MCP REPLAY AUDIT TRAIL'));
       stdout.writeln('${cyan.wrap('======================================================================')}');
 
       for (final a in logs) {
@@ -314,7 +313,7 @@ class MetaMcpAuditCommand extends Command<int> {
   }
 }
 
-class MetaMcpVaultCommand extends Command<int> {
+class MetaMcpVaultCommand extends Command {
   @override
   final String name = 'vault';
 
@@ -349,7 +348,7 @@ class MetaMcpVaultCommand extends Command<int> {
         final secrets = (data['secrets'] as List<dynamic>?) ?? [];
 
         stdout.writeln('\n${cyan.wrap('======================================================================')}');
-        stdout.writeln(bold.wrap(' ACR META-MCP AUTH VAULT — ENCRYPTED SECRETS'));
+        stdout.writeln(styleBold.wrap(' ACR META-MCP AUTH VAULT — ENCRYPTED SECRETS'));
         stdout.writeln('${cyan.wrap('======================================================================')}');
 
         if (secrets.isEmpty) {
@@ -360,15 +359,15 @@ class MetaMcpVaultCommand extends Command<int> {
             final refId = (s['refId'] as String? ?? '').padRight(32);
             final serverId = (s['serverId'] as String? ?? '').padRight(18);
             final cipher = s['algorithm'] ?? 'aes-256-gcm';
-            stdout.writeln('  ${magenta.wrap(domain)} ${bold.wrap(refId)} | $serverId | Cipher: $cipher');
+            stdout.writeln('  ${magenta.wrap(domain)} ${styleBold.wrap(refId)} | $serverId | Cipher: $cipher');
           }
         }
         stdout.writeln('\nTotal: ${secrets.length} vaulted credentials\n');
         return ExitCode.success.code;
       } else if (action == 'set') {
-        final server = argResults?['server'] as String? ?? (argResults?.rest.length ?? 0 > 1 ? argResults!.rest[1] : null);
-        final key = argResults?['key'] as String? ?? (argResults?.rest.length ?? 0 > 2 ? argResults!.rest[2] : null);
-        final value = argResults?['value'] as String? ?? (argResults?.rest.length ?? 0 > 3 ? argResults!.rest[3] : null);
+        final server = argResults?['server'] as String? ?? (((argResults?.rest.length ?? 0) > 1) ? argResults!.rest[1] : null);
+        final key = argResults?['key'] as String? ?? (((argResults?.rest.length ?? 0) > 2) ? argResults!.rest[2] : null);
+        final value = argResults?['value'] as String? ?? (((argResults?.rest.length ?? 0) > 3) ? argResults!.rest[3] : null);
         final domain = argResults?['domain'] as String? ?? 'personal';
         final cipher = argResults?['cipher'] as String? ?? 'aes-256-gcm';
 
@@ -385,7 +384,7 @@ class MetaMcpVaultCommand extends Command<int> {
         stdout.writeln(green.wrap('[SUCCESS] Stored secret in encrypted vault: ${res.body}'));
         return ExitCode.success.code;
       } else if (action == 'delete') {
-        final refId = argResults?['ref-id'] as String? ?? (argResults?.rest.length ?? 0 > 1 ? argResults!.rest[1] : null);
+        final refId = argResults?['ref-id'] as String? ?? (((argResults?.rest.length ?? 0) > 1) ? argResults!.rest[1] : null);
         if (refId == null) {
           stderr.writeln(yellow.wrap('Usage: acr meta-mcp vault --action=delete --ref-id=<ref_id>'));
           return ExitCode.usage.code;
@@ -394,7 +393,7 @@ class MetaMcpVaultCommand extends Command<int> {
         stdout.writeln(green.wrap('[SUCCESS] Deleted secret from vault: ${res.body}'));
         return ExitCode.success.code;
       } else if (action == 'rotate') {
-        final newSecret = argResults?['new-secret'] as String? ?? (argResults?.rest.length ?? 0 > 1 ? argResults!.rest[1] : null);
+        final newSecret = argResults?['new-secret'] as String? ?? (((argResults?.rest.length ?? 0) > 1) ? argResults!.rest[1] : null);
         if (newSecret == null) {
           stderr.writeln(yellow.wrap('Usage: acr meta-mcp vault --action=rotate --new-secret=<passphrase>'));
           return ExitCode.usage.code;

@@ -103,7 +103,7 @@ int _resolvePort(ServicePortDef def, Map<String, int> overrides) {
   return overrides[def.id] ?? def.defaultPort;
 }
 
-class PortsCommand extends Command<int> {
+class PortsCommand extends Command {
   @override
   final String name = 'ports';
 
@@ -127,7 +127,7 @@ class PortsCommand extends Command<int> {
   }
 }
 
-class PortsListCommand extends Command<int> {
+class PortsListCommand extends Command {
   @override
   final String name = 'list';
 
@@ -139,7 +139,7 @@ class PortsListCommand extends Command<int> {
     final overrides = _loadPortOverrides();
 
     stdout.writeln('\n${cyan.wrap('======================================================================')}');
-    stdout.writeln(bold.wrap(' ACR ECOSYSTEM SERVICE PORT MAPPINGS'));
+    stdout.writeln(styleBold.wrap(' ACR ECOSYSTEM SERVICE PORT MAPPINGS'));
     stdout.writeln('${cyan.wrap('======================================================================')}');
 
     for (final s in defaultServices) {
@@ -147,7 +147,7 @@ class PortsListCommand extends Command<int> {
       final isCustom = port != s.defaultPort;
       final badge = isCustom ? yellow.wrap('[CUSTOM]') : green.wrap('[DEFAULT]');
       final envVarStr = darkGray.wrap('(\$${s.envVar})');
-      final portStr = bold.wrap(':$port'.padRight(8));
+      final portStr = styleBold.wrap(':$port'.padRight(8));
 
       stdout.writeln('  $badge ${s.name.padRight(24)} -> $portStr $envVarStr');
     }
@@ -158,7 +158,7 @@ class PortsListCommand extends Command<int> {
   }
 }
 
-class PortsSetCommand extends Command<int> {
+class PortsSetCommand extends Command {
   @override
   final String name = 'set';
 
@@ -173,7 +173,7 @@ class PortsSetCommand extends Command<int> {
   @override
   Future<int> run() async {
     final serviceId = argResults?['service'] as String? ?? (argResults?.rest.isNotEmpty == true ? argResults!.rest[0] : null);
-    final portStr = argResults?['port'] as String? ?? (argResults?.rest.length ?? 0 > 1 ? argResults!.rest[1] : null);
+    final portStr = argResults?['port'] as String? ?? (((argResults?.rest.length ?? 0) > 1) ? argResults!.rest[1] : null);
 
     if (serviceId == null || portStr == null) {
       stderr.writeln(yellow.wrap('Usage: acr ports set <service-id> <port>'));
@@ -202,7 +202,7 @@ class PortsSetCommand extends Command<int> {
   }
 }
 
-class PortsResetCommand extends Command<int> {
+class PortsResetCommand extends Command {
   @override
   final String name = 'reset';
 
@@ -229,7 +229,7 @@ class PortsResetCommand extends Command<int> {
   }
 }
 
-class PortsTestCommand extends Command<int> {
+class PortsTestCommand extends Command {
   @override
   final String name = 'test';
 
@@ -241,7 +241,7 @@ class PortsTestCommand extends Command<int> {
     final overrides = _loadPortOverrides();
 
     stdout.writeln('\n${cyan.wrap('======================================================================')}');
-    stdout.writeln(bold.wrap(' TESTING SERVICE PORT CONNECTIVITY'));
+    stdout.writeln(styleBold.wrap(' TESTING SERVICE PORT CONNECTIVITY'));
     stdout.writeln('${cyan.wrap('======================================================================')}');
 
     for (final s in defaultServices) {
@@ -272,7 +272,7 @@ class PortsTestCommand extends Command<int> {
   }
 }
 
-class PortsExportCommand extends Command<int> {
+class PortsExportCommand extends Command {
   @override
   final String name = 'export';
 

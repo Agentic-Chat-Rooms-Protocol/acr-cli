@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:args/command_runner.dart';
-import 'package:io/io.dart';
 import '../api/acr_client.dart';
 
 class TunnelCommand extends Command<void> {

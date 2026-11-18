@@ -48,6 +48,17 @@ void main() {
       expect(res.stderr.toString(), contains('--rationale is mandatory when voting DISSENT'));
     });
 
+    test('Rejects insecure non-HTTPS tunnel cloud-url with exit code 64', () async {
+      final res = await Process.run(
+        Platform.resolvedExecutable,
+        ['run', 'bin/acr.dart', 'tunnel', '--cloud-url', 'http://143.198.98.229:20443'],
+      );
+
+      expect(res.exitCode, equals(64));
+      expect(res.stderr.toString(), contains('HTTPS URL'));
+      expect(res.stdout.toString(), isNot(contains('[OK]')));
+    });
+
     test('Queries live ACR daemon health successfully', () async {
       final res = await Process.run(
         Platform.resolvedExecutable,

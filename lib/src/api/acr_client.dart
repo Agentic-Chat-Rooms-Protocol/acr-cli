@@ -316,8 +316,17 @@ class AcrClient {
     if (res.statusCode != 200) {
       throw HttpException('HTTP ${res.statusCode}: ${res.body}');
     }
-    final data = jsonDecode(res.body) as Map<String, dynamic>;
-    final trail = (data['trail'] as List<dynamic>?) ?? [];
+    final decoded = jsonDecode(res.body);
+    List<dynamic> trail;
+    if (decoded == null) {
+      trail = <dynamic>[];
+    } else if (decoded is List<dynamic>) {
+      trail = decoded;
+    } else if (decoded is Map<String, dynamic> && decoded['trail'] is List<dynamic>) {
+      trail = decoded['trail'] as List<dynamic>;
+    } else {
+      throw FormatException('Unexpected audit chain response format');
+    }
     if (trail.isEmpty) {
       return {
         'is_valid': true,
@@ -329,8 +338,8 @@ class AcrClient {
     String prevHash = '';
     for (int i = 0; i < trail.length; i++) {
       final entry = trail[i] as Map<String, dynamic>;
-      final int index = entry['index'] as int;
-      final String entryPrevHash = entry['prev_hash'] as String? ?? '';
+      final int index = (entry['index'] as int?) ?? (entry['block_height'] as int?) ?? i;
+      final String entryPrevHash = (entry['prev_hash'] as String?) ?? (entry['previous_hash'] as String?) ?? '';
       final String stateHash = entry['state_hash'] as String? ?? '';
 
       if (index != i) {

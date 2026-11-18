@@ -32,9 +32,16 @@ class TunnelCommand extends Command<void> {
 
   @override
   Future<void> run() async {
-    final String cloudUrl = argResults?['cloud-url'] as String? ?? 'http://143.198.98.229:20443';
-    final String room = argResults?['room'] as String? ?? 'ephemeral-sandbox';
-    final bool ephemeral = argResults?['ephemeral'] as bool? ?? true;
+    final String cloudUrl = (argResults?['cloud-url'] as String?) ?? 'https://cloud.agentchatrooms.dev';
+    final String room = (argResults?['room'] as String?) ?? 'ephemeral-sandbox';
+    final bool ephemeral = (argResults?['ephemeral'] as bool?) ?? true;
+
+    final Uri? parsed = Uri.tryParse(cloudUrl);
+    if (parsed == null || parsed.scheme.toLowerCase() != 'https' || parsed.host.isEmpty) {
+      stderr.writeln('Error: --cloud-url must be a valid HTTPS URL (plaintext http:// relays are forbidden).');
+      exitCode = 64;
+      return;
+    }
 
     stdout.writeln('======================================================================');
     stdout.writeln(' ACR SECURE REVERSE TUNNEL BRIDGE (v0.8.2)');
@@ -44,10 +51,20 @@ class TunnelCommand extends Command<void> {
     stdout.writeln(' Sandbox Room  : $room');
     stdout.writeln(' Auto-Purge TTL: ${ephemeral ? "15 minutes" : "Persistent"}');
     stdout.writeln('----------------------------------------------------------------------');
-    stdout.writeln('\x1B[1;32m[OK] Outbound WebSocket handshaking with ACR Cloud mesh...\x1B[0m');
-    stdout.writeln('Session Token  : acr_tn_${DateTime.now().millisecondsSinceEpoch.toRadixString(16)}');
-    stdout.writeln('Public URL     : $cloudUrl/#/app?room=$room');
-    stdout.writeln('======================================================================');
-    stdout.writeln('Press Ctrl+C to close reverse tunnel.');
+
+    bool daemonReachable = false;
+    try {
+      final health = await client.fetchHealth();
+      final status = health['status']?.toString().toUpperCase() ?? '';
+      daemonReachable = status == 'HEALTHY' || status == 'UP';
+    } catch (_) {
+      daemonReachable = false;
+    }
+    stdout.writeln(' Local Daemon  : ${daemonReachable ? "ONLINE" : "OFFLINE"}');
+    stderr.writeln(
+      'Error: Interactive WebSocket tunnel transport is not bundled in acr-cli yet. '
+      'Use `npx @acr-js/bridge tunnel --url wss://${parsed.host}/tunnel --token \$ACR_ROOM_TOKEN` for live tunneling.',
+    );
+    exitCode = 1;
   }
 }

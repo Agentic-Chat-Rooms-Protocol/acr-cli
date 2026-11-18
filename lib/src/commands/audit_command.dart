@@ -42,6 +42,11 @@ class AuditCommand extends Command {
 
       if (audit.isEmpty) {
         stdout.writeln('  \x1B[90mNo blocks in audit chain.\x1B[0m');
+        if (verify) {
+          stdout.writeln(
+            '\n\x1B[1;32m✓ Cryptographic State Chain Invariant Valid: Genesis chain is empty (0 blocks).\x1B[0m',
+          );
+        }
         return;
       }
 

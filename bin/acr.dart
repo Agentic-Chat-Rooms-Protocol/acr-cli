@@ -5,13 +5,13 @@ import 'package:io/io.dart';
 import 'package:stack_trace/stack_trace.dart';
 import 'package:acr_cli/acr_cli.dart';
 
-const String acrCliVersion = '0.9.0';
+const String acrCliVersion = '1.0.0';
 
 void main(List<String> args) {
   Chain.capture(
     () async {
       final defaultUrl =
-          Platform.environment['ACR_DAEMON_URL'] ?? 'http://localhost:20443';
+          Platform.environment['ACR_DAEMON_URL'] ?? AcrClient.defaultBaseUrl;
 
       final runner = CommandRunner(
         'acr',
@@ -64,7 +64,10 @@ void main(List<String> args) {
         ..addCommand(TunnelCommand(client: client))
         ..addCommand(MetaMcpCommand(client: client))
         ..addCommand(PortsCommand(client: client))
-        ..addCommand(OpsRoomCommand(client: client));
+        ..addCommand(OpsRoomCommand(client: client))
+        ..addCommand(McpCommand(client: client))
+        ..addCommand(LoginCommand())
+        ..addCommand(LogoutCommand());
 
       if (args.isEmpty) {
         // Default to status dashboard when no subcommand given
@@ -72,7 +75,10 @@ void main(List<String> args) {
         return;
       }
 
-      await runner.run(args);
+      final result = await runner.run(args);
+      if (result is int && result != 0) {
+        exitCode = result;
+      }
     },
     onError: (error, chain) {
       if (error is UsageException) {

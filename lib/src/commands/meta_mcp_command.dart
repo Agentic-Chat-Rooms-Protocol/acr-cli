@@ -7,6 +7,17 @@ import 'package:io/ansi.dart';
 import 'package:io/io.dart';
 import '../api/acr_client.dart';
 
+String _resolveMetaMcpUrl() =>
+    Platform.environment['ACR_META_MCP_URL'] ?? 'http://127.0.0.1:20445';
+
+Map<String, String> _metaMcpHeaders([Map<String, String>? extra]) {
+  final token = (Platform.environment['ACR_META_MCP_API_TOKEN'] ?? '').trim();
+  return {
+    if (token.isNotEmpty) 'Authorization': 'Bearer $token',
+    ...?extra,
+  };
+}
+
 class MetaMcpCommand extends Command {
   @override
   final String name = 'meta-mcp';
@@ -44,9 +55,12 @@ class MetaMcpListCommand extends Command {
 
   @override
   Future<int> run() async {
-    final metaUrl = Platform.environment['ACR_META_MCP_URL'] ?? 'http://localhost:20445';
+    final metaUrl = _resolveMetaMcpUrl();
     try {
-      final res = await http.get(Uri.parse('$metaUrl/api/v1/meta-mcp/servers'));
+      final res = await http.get(
+        Uri.parse('$metaUrl/api/v1/meta-mcp/servers'),
+        headers: _metaMcpHeaders(),
+      );
       if (res.statusCode != 200) {
         stderr.writeln(red.wrap('[ERROR] Failed to fetch servers: HTTP ${res.statusCode}'));
         return ExitCode.software.code;
@@ -99,7 +113,7 @@ class MetaMcpImportCommand extends Command {
 
   @override
   Future<int> run() async {
-    final metaUrl = Platform.environment['ACR_META_MCP_URL'] ?? 'http://localhost:20445';
+    final metaUrl = _resolveMetaMcpUrl();
     final filePath = argResults?['file'] as String? ?? (argResults?.rest.isNotEmpty == true ? argResults!.rest.first : null);
 
     if (filePath == null) {
@@ -117,7 +131,7 @@ class MetaMcpImportCommand extends Command {
     try {
       final res = await http.post(
         Uri.parse('$metaUrl/api/v1/meta-mcp/servers/import'),
-        headers: {'Content-Type': 'application/json', 'x-acr-agent-did': 'did:key:cli-admin'},
+        headers: _metaMcpHeaders({'Content-Type': 'application/json', 'x-acr-agent-did': 'did:key:cli-admin'}),
         body: content,
       );
 
@@ -153,7 +167,7 @@ class MetaMcpToggleCommand extends Command {
 
   @override
   Future<int> run() async {
-    final metaUrl = Platform.environment['ACR_META_MCP_URL'] ?? 'http://localhost:20445';
+    final metaUrl = _resolveMetaMcpUrl();
     final serverId = argResults?.rest.isNotEmpty == true ? argResults!.rest.first : null;
 
     if (serverId == null) {
@@ -164,7 +178,7 @@ class MetaMcpToggleCommand extends Command {
     try {
       final res = await http.post(
         Uri.parse('$metaUrl/api/v1/meta-mcp/servers/$serverId/toggle'),
-        headers: {'Content-Type': 'application/json'},
+        headers: _metaMcpHeaders({'Content-Type': 'application/json'}),
         body: jsonEncode({'enabled': enable}),
       );
 
@@ -195,11 +209,14 @@ class MetaMcpToolsCommand extends Command {
 
   @override
   Future<int> run() async {
-    final metaUrl = Platform.environment['ACR_META_MCP_URL'] ?? 'http://localhost:20445';
+    final metaUrl = _resolveMetaMcpUrl();
     final view = argResults?['view'] as String? ?? 'projected';
 
     try {
-      final res = await http.get(Uri.parse('$metaUrl/api/v1/meta-mcp/tools?view=$view'));
+      final res = await http.get(
+        Uri.parse('$metaUrl/api/v1/meta-mcp/tools?view=$view'),
+        headers: _metaMcpHeaders(),
+      );
       if (res.statusCode != 200) {
         stderr.writeln(red.wrap('[ERROR] Failed to fetch tools: HTTP ${res.statusCode}'));
         return ExitCode.software.code;
@@ -236,7 +253,7 @@ class MetaMcpCallCommand extends Command {
 
   @override
   Future<int> run() async {
-    final metaUrl = Platform.environment['ACR_META_MCP_URL'] ?? 'http://localhost:20445';
+    final metaUrl = _resolveMetaMcpUrl();
     final rest = argResults?.rest ?? [];
     if (rest.isEmpty) {
       stderr.writeln(yellow.wrap('Usage: acr meta-mcp call <namespaced_tool_name> [json_arguments]'));
@@ -257,7 +274,7 @@ class MetaMcpCallCommand extends Command {
     try {
       final res = await http.post(
         Uri.parse('$metaUrl/api/v1/meta-mcp/tools/call'),
-        headers: {'Content-Type': 'application/json', 'x-acr-agent-did': 'did:key:cli-agent'},
+        headers: _metaMcpHeaders({'Content-Type': 'application/json', 'x-acr-agent-did': 'did:key:cli-agent'}),
         body: jsonEncode({'toolName': toolName, 'args': args}),
       );
 
@@ -280,9 +297,12 @@ class MetaMcpAuditCommand extends Command {
 
   @override
   Future<int> run() async {
-    final metaUrl = Platform.environment['ACR_META_MCP_URL'] ?? 'http://localhost:20445';
+    final metaUrl = _resolveMetaMcpUrl();
     try {
-      final res = await http.get(Uri.parse('$metaUrl/api/v1/meta-mcp/audit?limit=25'));
+      final res = await http.get(
+        Uri.parse('$metaUrl/api/v1/meta-mcp/audit?limit=25'),
+        headers: _metaMcpHeaders(),
+      );
       if (res.statusCode != 200) {
         stderr.writeln(red.wrap('[ERROR] Failed to fetch audit logs: HTTP ${res.statusCode}'));
         return ExitCode.software.code;
@@ -333,12 +353,15 @@ class MetaMcpVaultCommand extends Command {
 
   @override
   Future<int> run() async {
-    final metaUrl = Platform.environment['ACR_META_MCP_URL'] ?? 'http://localhost:20445';
+    final metaUrl = _resolveMetaMcpUrl();
     final action = argResults?['action'] as String? ?? (argResults?.rest.isNotEmpty == true ? argResults!.rest.first : 'list');
 
     try {
       if (action == 'list') {
-        final res = await http.get(Uri.parse('$metaUrl/api/v1/meta-mcp/vault/secrets'));
+        final res = await http.get(
+          Uri.parse('$metaUrl/api/v1/meta-mcp/vault/secrets'),
+          headers: _metaMcpHeaders(),
+        );
         if (res.statusCode != 200) {
           stderr.writeln(red.wrap('[ERROR] Failed to list vault secrets: HTTP ${res.statusCode}'));
           return ExitCode.software.code;
@@ -378,7 +401,7 @@ class MetaMcpVaultCommand extends Command {
 
         final res = await http.post(
           Uri.parse('$metaUrl/api/v1/meta-mcp/vault/secrets'),
-          headers: {'Content-Type': 'application/json'},
+          headers: _metaMcpHeaders({'Content-Type': 'application/json'}),
           body: jsonEncode({'serverId': server, 'key': key, 'value': value, 'domain': domain, 'cipher': cipher}),
         );
         stdout.writeln(green.wrap('[SUCCESS] Stored secret in encrypted vault: ${res.body}'));
@@ -389,7 +412,10 @@ class MetaMcpVaultCommand extends Command {
           stderr.writeln(yellow.wrap('Usage: acr meta-mcp vault --action=delete --ref-id=<ref_id>'));
           return ExitCode.usage.code;
         }
-        final res = await http.delete(Uri.parse('$metaUrl/api/v1/meta-mcp/vault/secrets/$refId'));
+        final res = await http.delete(
+          Uri.parse('$metaUrl/api/v1/meta-mcp/vault/secrets/$refId'),
+          headers: _metaMcpHeaders(),
+        );
         stdout.writeln(green.wrap('[SUCCESS] Deleted secret from vault: ${res.body}'));
         return ExitCode.success.code;
       } else if (action == 'rotate') {
@@ -400,7 +426,7 @@ class MetaMcpVaultCommand extends Command {
         }
         final res = await http.post(
           Uri.parse('$metaUrl/api/v1/meta-mcp/vault/rotate'),
-          headers: {'Content-Type': 'application/json'},
+          headers: _metaMcpHeaders({'Content-Type': 'application/json'}),
           body: jsonEncode({'newMasterSecret': newSecret}),
         );
         stdout.writeln(green.wrap('[SUCCESS] Vault master passphrase rotated: ${res.body}'));

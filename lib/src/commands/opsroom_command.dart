@@ -279,7 +279,7 @@ class OpsRoomBattlecardCommand extends Command {
         '${row[0].padRight(20)} | \x1B[31m${row[1].padRight(34)}\x1B[0m | \x1B[32m${row[2].padRight(36)}\x1B[0m | \x1B[1;36m${row[3]}\x1B[0m',
       );
     }
-    stdout.writeln('\n' + '-' * 115);
+    stdout.writeln('\n${'-' * 115}');
     stdout.writeln(
       '\x1B[1;32mRESULT: ACR OpsRoom dominates across all 7 operational vectors with 0 unverified writes and \$0 tax.\x1B[0m\n',
     );

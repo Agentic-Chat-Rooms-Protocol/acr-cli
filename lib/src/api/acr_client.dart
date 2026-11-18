@@ -4,15 +4,101 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 
 class AcrClient {
-  AcrClient({String? baseUrl, http.Client? client})
-    : baseUrl = baseUrl ?? 'http://localhost:20443',
-      _client = client ?? http.Client();
+  AcrClient({
+    String? baseUrl,
+    String? apiToken,
+    http.Client? client,
+    Map<String, String>? environment,
+    String? homeDir,
+    this.timeout = const Duration(seconds: 10),
+  }) : baseUrl = (baseUrl ?? defaultBaseUrl).replaceAll(RegExp(r'/+$'), ''),
+       apiToken = resolveApiToken(
+         apiToken: apiToken,
+         environment: environment,
+         homeDir: homeDir,
+       ),
+       _client = client ?? http.Client();
+
+  static const String defaultBaseUrl = 'http://127.0.0.1:20443';
 
   final String baseUrl;
+  final String? apiToken;
   final http.Client _client;
+  final Duration timeout;
+
+  /// Resolves the local daemon Bearer token from explicit override,
+  /// `ACR_API_TOKEN` environment variable, or `~/.acr/api-token`.
+  static String? resolveApiToken({
+    String? apiToken,
+    Map<String, String>? environment,
+    String? homeDir,
+  }) {
+    if (apiToken != null && apiToken.trim().isNotEmpty) {
+      return apiToken.trim();
+    }
+    final env = environment ?? Platform.environment;
+    final envToken = env['ACR_API_TOKEN'];
+    if (envToken != null && envToken.trim().isNotEmpty) {
+      return envToken.trim();
+    }
+    final resolvedHome = (homeDir != null && homeDir.trim().isNotEmpty)
+        ? homeDir.trim()
+        : (env['USERPROFILE'] ?? env['HOME'])?.trim();
+    if (resolvedHome != null && resolvedHome.isNotEmpty) {
+      final tokenFile = File(
+        '$resolvedHome${Platform.pathSeparator}.acr${Platform.pathSeparator}api-token',
+      );
+      if (tokenFile.existsSync()) {
+        try {
+          final fileToken = tokenFile.readAsStringSync().trim();
+          if (fileToken.isNotEmpty) {
+            return fileToken;
+          }
+        } catch (_) {
+          // Ignore unreadable token file and fall back to unauthenticated mode.
+        }
+      }
+    }
+    return null;
+  }
+
+  Future<http.Response> _send(
+    String method,
+    Uri uri, {
+    Map<String, String>? headers,
+    String? body,
+    List<int>? bodyBytes,
+  }) async {
+    final req = http.Request(method, uri)
+      ..followRedirects = false
+      ..maxRedirects = 0;
+
+    if (bodyBytes != null) {
+      req.bodyBytes = bodyBytes;
+    } else if (body != null) {
+      req.body = body;
+    }
+
+    if (apiToken != null && apiToken!.isNotEmpty) {
+      req.headers['Authorization'] = 'Bearer $apiToken';
+    }
+    if (headers != null) {
+      req.headers.addAll(headers);
+    }
+
+    final streamed = await _client.send(req).timeout(timeout);
+    final res = await http.Response.fromStream(streamed);
+    if (res.statusCode >= 300 && res.statusCode < 400) {
+      throw HttpException(
+        'Redirect blocked (HTTP ${res.statusCode}): redirects are not followed',
+        uri: uri,
+      );
+    }
+    return res;
+  }
 
   Future<Map<String, dynamic>> fetchHealth() async {
-    final res = await _client.get(Uri.parse('$baseUrl/api/v1/health'));
+    final res = await _send('GET', Uri.parse('$baseUrl/api/v1/health'));
     if (res.statusCode != 200) {
       throw HttpException('HTTP ${res.statusCode}: ${res.body}');
     }
@@ -20,7 +106,7 @@ class AcrClient {
   }
 
   Future<List<Map<String, dynamic>>> fetchRooms() async {
-    final res = await _client.get(Uri.parse('$baseUrl/api/v1/rooms'));
+    final res = await _send('GET', Uri.parse('$baseUrl/api/v1/rooms'));
     if (res.statusCode != 200) {
       throw HttpException('HTTP ${res.statusCode}: ${res.body}');
     }
@@ -38,7 +124,8 @@ class AcrClient {
     if (name.trim().isEmpty) {
       throw ArgumentError('Room name cannot be empty');
     }
-    final res = await _client.post(
+    final res = await _send(
+      'POST',
       Uri.parse(
         '$baseUrl/api/v1/rooms?creator_did=${Uri.encodeComponent(creatorDid)}',
       ),
@@ -60,7 +147,8 @@ class AcrClient {
     String roomId, {
     int limit = 50,
   }) async {
-    final res = await _client.get(
+    final res = await _send(
+      'GET',
       Uri.parse('$baseUrl/api/v1/rooms/$roomId/messages?limit=$limit'),
     );
     if (res.statusCode != 200) {
@@ -88,7 +176,8 @@ class AcrClient {
       // ignore: use_null_aware_elements
       if (attachment != null) 'attachment': attachment,
     };
-    final res = await _client.post(
+    final res = await _send(
+      'POST',
       Uri.parse('$baseUrl/api/v1/rooms/$roomId/messages'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(body),
@@ -100,7 +189,7 @@ class AcrClient {
   }
 
   Future<List<Map<String, dynamic>>> fetchAgents() async {
-    final res = await _client.get(Uri.parse('$baseUrl/api/v1/agents'));
+    final res = await _send('GET', Uri.parse('$baseUrl/api/v1/agents'));
     if (res.statusCode != 200) {
       throw HttpException('HTTP ${res.statusCode}: ${res.body}');
     }
@@ -109,7 +198,8 @@ class AcrClient {
   }
 
   Future<List<Map<String, dynamic>>> fetchBuddies(String did) async {
-    final res = await _client.get(
+    final res = await _send(
+      'GET',
       Uri.parse('$baseUrl/api/v1/buddies?did=${Uri.encodeComponent(did)}'),
     );
     if (res.statusCode != 200) {
@@ -126,7 +216,8 @@ class AcrClient {
     required String fromDid,
     required String toDid,
   }) async {
-    final res = await _client.post(
+    final res = await _send(
+      'POST',
       Uri.parse('$baseUrl/api/v1/buddies/$action'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'from_did': fromDid, 'to_did': toDid}),
@@ -138,7 +229,8 @@ class AcrClient {
   }
 
   Future<List<Map<String, dynamic>>> fetchProposals(String roomId) async {
-    final res = await _client.get(
+    final res = await _send(
+      'GET',
       Uri.parse('$baseUrl/api/v1/proposals?room_id=$roomId'),
     );
     if (res.statusCode != 200) {
@@ -155,7 +247,8 @@ class AcrClient {
     required String proposerDid,
     List<String>? options,
   }) async {
-    final res = await _client.post(
+    final res = await _send(
+      'POST',
       Uri.parse('$baseUrl/api/v1/proposals'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
@@ -193,7 +286,8 @@ class AcrClient {
       );
     }
 
-    final res = await _client.post(
+    final res = await _send(
+      'POST',
       Uri.parse('$baseUrl/api/v1/proposals/$proposalId/vote'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
@@ -213,7 +307,8 @@ class AcrClient {
     required String proposalId,
     required String closerDid,
   }) async {
-    final res = await _client.post(
+    final res = await _send(
+      'POST',
       Uri.parse('$baseUrl/api/v1/proposals/$proposalId/close'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'closer_did': closerDid}),
@@ -239,10 +334,11 @@ class AcrClient {
     final uri = Uri.parse(
       '$baseUrl/api/v1/files/upload?filename=${Uri.encodeComponent(filename)}&mime_type=${Uri.encodeComponent(mime)}',
     );
-    final res = await _client.post(
+    final res = await _send(
+      'POST',
       uri,
       headers: {'Content-Type': mime},
-      body: bytes,
+      bodyBytes: bytes,
     );
     if (res.statusCode != 201 && res.statusCode != 200) {
       throw HttpException('HTTP ${res.statusCode}: ${res.body}');
@@ -251,7 +347,7 @@ class AcrClient {
   }
 
   Future<List<int>> downloadFile(String fileId) async {
-    final res = await _client.get(Uri.parse('$baseUrl/api/v1/files/$fileId'));
+    final res = await _send('GET', Uri.parse('$baseUrl/api/v1/files/$fileId'));
     if (res.statusCode != 200) {
       throw HttpException('HTTP ${res.statusCode}: ${res.body}');
     }
@@ -259,7 +355,8 @@ class AcrClient {
   }
 
   Future<List<Map<String, dynamic>>> fetchAudit({int limit = 50}) async {
-    final res = await _client.get(
+    final res = await _send(
+      'GET',
       Uri.parse('$baseUrl/api/v1/audit?limit=$limit'),
     );
     if (res.statusCode != 200) {
@@ -270,7 +367,8 @@ class AcrClient {
     List<dynamic> list;
     if (decoded is List<dynamic>) {
       list = decoded;
-    } else if (decoded is Map<String, dynamic> && decoded['trail'] is List<dynamic>) {
+    } else if (decoded is Map<String, dynamic> &&
+        decoded['trail'] is List<dynamic>) {
       list = decoded['trail'] as List<dynamic>;
     } else {
       return <Map<String, dynamic>>[];
@@ -279,7 +377,7 @@ class AcrClient {
   }
 
   Future<List<Map<String, dynamic>>> fetchEscalations() async {
-    final res = await _client.get(Uri.parse('$baseUrl/api/v1/escalations'));
+    final res = await _send('GET', Uri.parse('$baseUrl/api/v1/escalations'));
     if (res.statusCode != 200) {
       throw HttpException('HTTP ${res.statusCode}: ${res.body}');
     }
@@ -295,7 +393,8 @@ class AcrClient {
     required String operatorDid,
     required String signature,
   }) async {
-    final res = await _client.post(
+    final res = await _send(
+      'POST',
       Uri.parse('$baseUrl/api/v1/escalations/$id/resolve'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
@@ -312,7 +411,7 @@ class AcrClient {
 
   /// Independently recomputes and verifies cryptographic state hash continuity client-side (GAP-06).
   Future<Map<String, dynamic>> verifyAuditChain() async {
-    final res = await _client.get(Uri.parse('$baseUrl/api/v1/audit/chain'));
+    final res = await _send('GET', Uri.parse('$baseUrl/api/v1/audit/chain'));
     if (res.statusCode != 200) {
       throw HttpException('HTTP ${res.statusCode}: ${res.body}');
     }
@@ -322,7 +421,8 @@ class AcrClient {
       trail = <dynamic>[];
     } else if (decoded is List<dynamic>) {
       trail = decoded;
-    } else if (decoded is Map<String, dynamic> && decoded['trail'] is List<dynamic>) {
+    } else if (decoded is Map<String, dynamic> &&
+        decoded['trail'] is List<dynamic>) {
       trail = decoded['trail'] as List<dynamic>;
     } else {
       throw FormatException('Unexpected audit chain response format');
@@ -338,8 +438,12 @@ class AcrClient {
     String prevHash = '';
     for (int i = 0; i < trail.length; i++) {
       final entry = trail[i] as Map<String, dynamic>;
-      final int index = (entry['index'] as int?) ?? (entry['block_height'] as int?) ?? i;
-      final String entryPrevHash = (entry['prev_hash'] as String?) ?? (entry['previous_hash'] as String?) ?? '';
+      final int index =
+          (entry['index'] as int?) ?? (entry['block_height'] as int?) ?? i;
+      final String entryPrevHash =
+          (entry['prev_hash'] as String?) ??
+          (entry['previous_hash'] as String?) ??
+          '';
       final String stateHash = entry['state_hash'] as String? ?? '';
 
       if (index != i) {
@@ -353,7 +457,8 @@ class AcrClient {
         return {
           'is_valid': false,
           'broken_index': i,
-          'message': 'Hash continuity broken at index $i: expected $prevHash, got $entryPrevHash',
+          'message':
+              'Hash continuity broken at index $i: expected $prevHash, got $entryPrevHash',
         };
       }
       if (stateHash.isEmpty) {
@@ -370,12 +475,16 @@ class AcrClient {
       'is_valid': true,
       'depth': trail.length,
       'head_hash': prevHash,
-      'message': 'Cryptographic audit chain verified: ${trail.length} blocks untampered',
+      'message':
+          'Cryptographic audit chain verified: ${trail.length} blocks untampered',
     };
   }
 
   Future<Map<String, dynamic>> fetchSecurityConfig() async {
-    final res = await _client.get(Uri.parse('$baseUrl/api/v1/config/security'));
+    final res = await _send(
+      'GET',
+      Uri.parse('$baseUrl/api/v1/config/security'),
+    );
     if (res.statusCode != 200) {
       throw HttpException('HTTP ${res.statusCode}: ${res.body}');
     }
@@ -390,7 +499,8 @@ class AcrClient {
     if (enableCors != null) body['enable_cors'] = enableCors;
     if (enablePna != null) body['enable_pna'] = enablePna;
 
-    final res = await _client.post(
+    final res = await _send(
+      'POST',
       Uri.parse('$baseUrl/api/v1/config/security'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(body),
@@ -402,7 +512,7 @@ class AcrClient {
   }
 
   Future<Map<String, dynamic>> fetchOpsRoomStatus() async {
-    final res = await _client.get(Uri.parse('$baseUrl/api/v1/opsroom/status'));
+    final res = await _send('GET', Uri.parse('$baseUrl/api/v1/opsroom/status'));
     if (res.statusCode != 200) {
       throw HttpException('HTTP ${res.statusCode}: ${res.body}');
     }
@@ -410,7 +520,10 @@ class AcrClient {
   }
 
   Future<Map<String, dynamic>> fetchOpsRoomBattlecard() async {
-    final res = await _client.get(Uri.parse('$baseUrl/api/v1/opsroom/battlecard'));
+    final res = await _send(
+      'GET',
+      Uri.parse('$baseUrl/api/v1/opsroom/battlecard'),
+    );
     if (res.statusCode != 200) {
       throw HttpException('HTTP ${res.statusCode}: ${res.body}');
     }
@@ -426,7 +539,8 @@ class AcrClient {
     if (customTitle != null) body['title'] = customTitle;
     if (customDesc != null) body['description'] = customDesc;
 
-    final res = await _client.post(
+    final res = await _send(
+      'POST',
       Uri.parse('$baseUrl/api/v1/opsroom/incidents/trigger'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(body),
@@ -441,7 +555,8 @@ class AcrClient {
     String incidentId, {
     bool humanApproved = true,
   }) async {
-    final res = await _client.post(
+    final res = await _send(
+      'POST',
       Uri.parse('$baseUrl/api/v1/opsroom/incidents/$incidentId/execute'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'human_approved': humanApproved}),

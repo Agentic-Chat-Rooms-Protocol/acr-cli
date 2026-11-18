@@ -28,7 +28,8 @@ class TunnelCommand extends Command<void> {
   String get name => 'tunnel';
 
   @override
-  String get description => 'Launch an ephemeral reverse tunnel bridging local MCP agents to ACR Cloud.';
+  String get description =>
+      'Preflight check and delegate ephemeral reverse tunnel bridging via @acr-js/bridge.';
 
   @override
   Future<void> run() async {
@@ -44,7 +45,7 @@ class TunnelCommand extends Command<void> {
     }
 
     stdout.writeln('======================================================================');
-    stdout.writeln(' ACR SECURE REVERSE TUNNEL BRIDGE (v0.8.2)');
+    stdout.writeln(' ACR SECURE REVERSE TUNNEL PREFLIGHT (v1.0.0)');
     stdout.writeln('======================================================================');
     stdout.writeln(' Local Daemon  : ${client.baseUrl}');
     stdout.writeln(' Cloud Relay   : $cloudUrl');

@@ -74,7 +74,7 @@ class ConfigSecurityCommand extends Command<void> {
     final bool enablePna = config['enable_pna'] as bool? ?? false;
     final String corsStatus = config['cors_status'] as String? ?? (enableCors ? 'active' : 'disabled');
     final String pnaStatus = config['pna_status'] as String? ?? (enablePna ? 'active' : 'disabled');
-    final String version = config['version'] as String? ?? 'v0.8.2';
+    final String version = config['version'] as String? ?? 'v1.0.0';
 
     stdout.writeln('======================================================================');
     stdout.writeln(' ACR DAEMON SECURITY & NETWORK POLICY ($version)');

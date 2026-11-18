@@ -251,7 +251,7 @@ class PortsTestCommand extends Command {
         continue;
       }
 
-      final url = 'http://localhost:$port${s.healthPath}';
+      final url = 'http://127.0.0.1:$port${s.healthPath}';
       try {
         final stopwatch = Stopwatch()..start();
         final res = await http.get(Uri.parse(url)).timeout(const Duration(milliseconds: 1500));
@@ -300,8 +300,8 @@ class PortsExportCommand extends Command {
       for (final s in defaultServices) {
         stdout.writeln('${s.envVar}=${_resolvePort(s, overrides)}');
       }
-      stdout.writeln('ACR_DAEMON_URL=http://localhost:${_resolvePort(defaultServices[0], overrides)}');
-      stdout.writeln('ACR_META_MCP_URL=http://localhost:${_resolvePort(defaultServices[1], overrides)}');
+      stdout.writeln('ACR_DAEMON_URL=http://127.0.0.1:${_resolvePort(defaultServices[0], overrides)}');
+      stdout.writeln('ACR_META_MCP_URL=http://127.0.0.1:${_resolvePort(defaultServices[1], overrides)}');
     }
     return ExitCode.success.code;
   }

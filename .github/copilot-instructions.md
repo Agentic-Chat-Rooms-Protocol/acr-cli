@@ -6,7 +6,7 @@ Adheres to W3C DID/VC, ACP v2 session substrate, TLA+ state continuity invariant
 
 ## Primary Language / Stack
 - Language/Runtime: `dart`
-- Protocol Version: `v0.8.2`
+- Protocol Version: `v1.0.0`
 - Governance: CIP consensus with mandatory dissent rationale preservation (`VOTE_DISSENT_RECORDED`).
 
 ## Core Conventions

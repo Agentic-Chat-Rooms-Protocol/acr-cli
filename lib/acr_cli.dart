@@ -2,6 +2,9 @@
 library;
 
 export 'src/api/acr_client.dart';
+export 'src/mcp/mcp_endpoint.dart';
+export 'src/commands/auth_command.dart';
+export 'src/commands/mcp_command.dart';
 export 'src/commands/status_command.dart';
 export 'src/commands/health_command.dart';
 export 'src/commands/rooms_command.dart';

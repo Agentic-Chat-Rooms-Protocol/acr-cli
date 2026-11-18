@@ -1,10 +1,127 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:acr_cli/src/api/acr_client.dart';
 import 'package:test/test.dart';
 
 void main() {
   group('ACR Dart Native CLI Integration Tests', () {
-    test('Displays usage help text with all 10 registered commands', () async {
+    late HttpServer mockDaemon;
+    late String baseUrl;
+    const String testToken = 'test-local-daemon-token-20443';
+    bool enableCors = true;
+    bool enablePna = true;
+
+    setUpAll(() async {
+      mockDaemon = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      baseUrl = 'http://127.0.0.1:${mockDaemon.port}';
+
+      mockDaemon.listen((HttpRequest req) async {
+        final path = req.uri.path;
+        final isPublic = path == '/api/v1/health' || path == '/health';
+
+        if (!isPublic &&
+            req.headers.value(HttpHeaders.authorizationHeader) !=
+                'Bearer $testToken') {
+          req.response.statusCode = HttpStatus.unauthorized;
+          req.response.write('unauthorized');
+          await req.response.close();
+          return;
+        }
+
+        req.response.headers.contentType = ContentType.json;
+        if (path == '/api/v1/health') {
+          req.response.statusCode = HttpStatus.ok;
+          req.response.write(
+            jsonEncode({
+              'status': 'healthy',
+              'mesh_latency_ms': 0.25,
+              'uptime': '1m',
+              'audit_chain_depth': 2,
+            }),
+          );
+        } else if (path == '/api/v1/rooms') {
+          req.response.statusCode = HttpStatus.ok;
+          req.response.write(
+            jsonEncode([
+              {
+                'id': 'consensus-main',
+                'name': 'Consensus Main',
+                'topic': 'Byzantine Deliberation',
+                'is_private': false,
+                'message_count': 1,
+              },
+            ]),
+          );
+        } else if (path == '/api/v1/proposals') {
+          req.response.statusCode = HttpStatus.ok;
+          req.response.write(
+            jsonEncode([
+              {
+                'id': 'prop-1',
+                'room_id': 'consensus-main',
+                'title': 'Enforce Loopback Auth',
+                'status': 'open',
+                'votes': <String, dynamic>{},
+                'dissent_logs': <dynamic>[],
+              },
+            ]),
+          );
+        } else if (path == '/api/v1/audit' || path == '/api/v1/audit/chain') {
+          req.response.statusCode = HttpStatus.ok;
+          req.response.write(
+            jsonEncode({
+              'trail': [
+                {
+                  'index': 0,
+                  'event_type': 'GENESIS',
+                  'prev_hash': '',
+                  'state_hash': 'hash_0',
+                  'timestamp': '2026-11-18T00:00:00Z',
+                },
+                {
+                  'index': 1,
+                  'event_type': 'ROOM_CREATED',
+                  'prev_hash': 'hash_0',
+                  'state_hash': 'hash_1',
+                  'timestamp': '2026-11-18T00:00:01Z',
+                },
+              ],
+            }),
+          );
+        } else if (path == '/api/v1/config/security') {
+          if (req.method == 'POST') {
+            final raw = await utf8.decoder.bind(req).join();
+            final body = jsonDecode(raw) as Map<String, dynamic>;
+            if (body['enable_cors'] is bool) {
+              enableCors = body['enable_cors'] as bool;
+            }
+            if (body['enable_pna'] is bool) {
+              enablePna = body['enable_pna'] as bool;
+            }
+          }
+          req.response.statusCode = HttpStatus.ok;
+          req.response.write(
+            jsonEncode({
+              'enable_cors': enableCors,
+              'enable_pna': enablePna,
+              'cors_status': enableCors ? 'active' : 'disabled',
+              'pna_status': enablePna ? 'active' : 'disabled',
+              'version': 'v1.0.0',
+            }),
+          );
+        } else {
+          req.response.statusCode = HttpStatus.notFound;
+          req.response.write(jsonEncode({'error': 'not found'}));
+        }
+        await req.response.close();
+      });
+    });
+
+    tearDownAll(() async {
+      await mockDaemon.close(force: true);
+    });
+
+    test('Displays usage help text with all registered commands', () async {
       final res = await Process.run(
         Platform.resolvedExecutable,
         ['run', 'bin/acr.dart', '--help'],
@@ -26,6 +143,9 @@ void main() {
       expect(out, contains('config'));
       expect(out, contains('tunnel'));
       expect(out, contains('opsroom'));
+      expect(out, contains('mcp'));
+      expect(out, contains('login'));
+      expect(out, contains('logout'));
     });
 
     test('Prints version flag correctly', () async {
@@ -35,7 +155,7 @@ void main() {
       );
 
       expect(res.exitCode, equals(0));
-      expect(res.stdout.toString(), contains('0.9.0'));
+      expect(res.stdout.toString(), contains('1.0.0'));
     });
 
     test('Rejects dissent voting without rationale with exit code 64', () async {
@@ -63,6 +183,7 @@ void main() {
       final res = await Process.run(
         Platform.resolvedExecutable,
         ['run', 'bin/acr.dart', 'health'],
+        environment: {'ACR_DAEMON_URL': baseUrl, 'ACR_API_TOKEN': testToken},
       );
 
       expect(res.exitCode, equals(0));
@@ -71,10 +192,11 @@ void main() {
       expect(out, contains('Audit Chain Depth:'));
     });
 
-    test('Lists registered deliberation rooms', () async {
+    test('Lists registered deliberation rooms with Bearer auth', () async {
       final res = await Process.run(
         Platform.resolvedExecutable,
         ['run', 'bin/acr.dart', 'rooms', 'list'],
+        environment: {'ACR_DAEMON_URL': baseUrl, 'ACR_API_TOKEN': testToken},
       );
 
       expect(res.exitCode, equals(0));
@@ -87,6 +209,7 @@ void main() {
       final res = await Process.run(
         Platform.resolvedExecutable,
         ['run', 'bin/acr.dart', 'proposals', 'list', '-r', 'consensus-main'],
+        environment: {'ACR_DAEMON_URL': baseUrl, 'ACR_API_TOKEN': testToken},
       );
 
       expect(res.exitCode, equals(0));
@@ -98,6 +221,7 @@ void main() {
       final res = await Process.run(
         Platform.resolvedExecutable,
         ['run', 'bin/acr.dart', 'audit', '--verify'],
+        environment: {'ACR_DAEMON_URL': baseUrl, 'ACR_API_TOKEN': testToken},
       );
 
       expect(res.exitCode, equals(0));
@@ -132,13 +256,13 @@ void main() {
     });
 
     test('AcrClient verifyAuditChain recomputes continuity successfully', () async {
-      final client = AcrClient();
+      final client = AcrClient(baseUrl: baseUrl, apiToken: testToken);
       final res = await client.verifyAuditChain();
       expect(res['is_valid'], isTrue);
     });
 
     test('Queries and updates security config via AcrClient', () async {
-      final client = AcrClient();
+      final client = AcrClient(baseUrl: baseUrl, apiToken: testToken);
       final config = await client.fetchSecurityConfig();
       expect(config.containsKey('enable_cors'), isTrue);
       expect(config.containsKey('enable_pna'), isTrue);

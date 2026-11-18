@@ -87,7 +87,8 @@ class AdaptiveRenderLoop {
     } else {
       _skippedFrames++;
       // Backoff interval up to maxInterval
-      final nextMs = (_currentInterval.inMilliseconds * backoffMultiplier).round();
+      final nextMs = (_currentInterval.inMilliseconds * backoffMultiplier)
+          .round();
       if (nextMs >= maxInterval.inMilliseconds) {
         _currentInterval = maxInterval;
       } else {

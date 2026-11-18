@@ -42,13 +42,24 @@ class LoginCommand extends Command {
   static Future<Map<String, dynamic>> discoverMetadata(
     http.Client client,
   ) async {
-    final res = await client
-        .get(Uri.parse(McpEndpoint.resourceMetadataUrl))
+    final uri = Uri.parse(McpEndpoint.resourceMetadataUrl);
+    final req = http.Request('GET', uri)
+      ..followRedirects = false
+      ..maxRedirects = 0;
+    final streamed = await client
+        .send(req)
         .timeout(const Duration(seconds: 10));
+    final res = await http.Response.fromStream(streamed);
+    if (res.statusCode >= 300 && res.statusCode < 400) {
+      throw HttpException(
+        'Redirect blocked (HTTP ${res.statusCode}): redirects are not followed',
+        uri: uri,
+      );
+    }
     if (res.statusCode != 200) {
       throw HttpException(
         'RFC 9728 metadata discovery failed: HTTP ${res.statusCode}',
-        uri: Uri.parse(McpEndpoint.resourceMetadataUrl),
+        uri: uri,
       );
     }
     final decoded = jsonDecode(res.body);
@@ -103,6 +114,27 @@ class LoginCommand extends Command {
       final authServers = metadata['authorization_servers'];
       if (authServers is List && authServers.isNotEmpty) {
         issuer = authServers.first.toString();
+      }
+    } on FormatException catch (e) {
+      stderr.writeln(
+        red.wrap('[ERROR] RFC 9728 metadata verification failed: $e'),
+      );
+      exitCode = ExitCode.data.code;
+      return ExitCode.data.code;
+    } on HttpException catch (e) {
+      if (e.message.contains('Redirect blocked')) {
+        stderr.writeln(
+          red.wrap('[ERROR] RFC 9728 metadata discovery failed: $e'),
+        );
+        exitCode = ExitCode.software.code;
+        return ExitCode.software.code;
+      }
+      if (!dryRun) {
+        stderr.writeln(
+          yellow.wrap(
+            '[WARN] Could not fetch RFC 9728 metadata ($e); using pinned Clerk issuer $issuer.',
+          ),
+        );
       }
     } catch (e) {
       if (!dryRun) {

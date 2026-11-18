@@ -72,7 +72,12 @@ class OpsRoomStatusCommand extends Command {
           'id': 'squad-core-sre',
           'name': 'Core High-Availability Squad',
           'agent_count': 4,
-          'roles': ['Atlas Commander', 'SRE Reliability', 'SecOps Guard', 'DataOps DBA'],
+          'roles': [
+            'Atlas Commander',
+            'SRE Reliability',
+            'SecOps Guard',
+            'DataOps DBA',
+          ],
         },
         'sandbox': {
           'engine': 'ToolHive Micro-Container',
@@ -93,31 +98,53 @@ class OpsRoomStatusCommand extends Command {
 
     stdout.writeln('\x1B[1;33m[ACTIVE INCIDENT STATE]\x1B[0m');
     stdout.writeln('  ID:                 ${inc['id'] ?? 'N/A'}');
-    stdout.writeln('  Title:              \x1B[1m${inc['title'] ?? 'N/A'}\x1B[0m');
-    stdout.writeln('  Severity:           \x1B[1;31m${inc['severity'] ?? 'NORMAL'}\x1B[0m');
-    stdout.writeln('  Lifecycle Phase:    \x1B[1;32m${inc['status'] ?? 'STANDBY'}\x1B[0m');
+    stdout.writeln(
+      '  Title:              \x1B[1m${inc['title'] ?? 'N/A'}\x1B[0m',
+    );
+    stdout.writeln(
+      '  Severity:           \x1B[1;31m${inc['severity'] ?? 'NORMAL'}\x1B[0m',
+    );
+    stdout.writeln(
+      '  Lifecycle Phase:    \x1B[1;32m${inc['status'] ?? 'STANDBY'}\x1B[0m',
+    );
     stdout.writeln(
       '  Consensus Quorum:   \x1B[1;36m${inc['quorum_percentage'] ?? 67.0}% (Threshold: ${inc['threshold'] ?? 67.0}% BFT)\x1B[0m',
     );
     stdout.writeln();
 
     stdout.writeln('\x1B[1;37m[DISPATCHED AGENT SQUAD]\x1B[0m');
-    stdout.writeln('  Squad Name:         ${squad['name'] ?? 'Autonomous Reliability Squad'}');
-    stdout.writeln('  Agent Count:        ${squad['agent_count'] ?? 4} Sovereign DIDs');
+    stdout.writeln(
+      '  Squad Name:         ${squad['name'] ?? 'Autonomous Reliability Squad'}',
+    );
+    stdout.writeln(
+      '  Agent Count:        ${squad['agent_count'] ?? 4} Sovereign DIDs',
+    );
     final roles = squad['roles'] as List<dynamic>? ?? [];
     stdout.writeln('  Assigned Agents:    ${roles.join(' • ')}');
     stdout.writeln();
 
     stdout.writeln('\x1B[1;32m[TOOLHIVE ZERO-TRUST PROCESS ISOLATION]\x1B[0m');
-    stdout.writeln('  Container Runtime:  ${sandbox['engine'] ?? 'ToolHive Micro-Sandbox'}');
-    stdout.writeln('  Network Egress:     \x1B[1;32m${sandbox['egress_policy'] ?? 'LOCKED_ALLOWLIST'}\x1B[0m');
-    stdout.writeln('  Preflight Dry-Run:  \x1B[1;32mPASSED (Zero unverified writes)\x1B[0m');
+    stdout.writeln(
+      '  Container Runtime:  ${sandbox['engine'] ?? 'ToolHive Micro-Sandbox'}',
+    );
+    stdout.writeln(
+      '  Network Egress:     \x1B[1;32m${sandbox['egress_policy'] ?? 'LOCKED_ALLOWLIST'}\x1B[0m',
+    );
+    stdout.writeln(
+      '  Preflight Dry-Run:  \x1B[1;32mPASSED (Zero unverified writes)\x1B[0m',
+    );
     stdout.writeln();
 
     stdout.writeln('\x1B[1;35m[CRYPTOGRAPHIC AUDIT LEDGER]\x1B[0m');
-    stdout.writeln('  Merkle Root:        ${ledger['merkle_root'] ?? '0xgenesis...'}');
-    stdout.writeln('  Immutable Depth:    ${ledger['audit_depth'] ?? 0} signed turns');
-    stdout.writeln('  Platform Billing:   \x1B[1;32m\$0.00 (100% Free Open-Source Apache-2)\x1B[0m\n');
+    stdout.writeln(
+      '  Merkle Root:        ${ledger['merkle_root'] ?? '0xgenesis...'}',
+    );
+    stdout.writeln(
+      '  Immutable Depth:    ${ledger['audit_depth'] ?? 0} signed turns',
+    );
+    stdout.writeln(
+      '  Platform Billing:   \x1B[1;32m\$0.00 (100% Free Open-Source Apache-2)\x1B[0m\n',
+    );
   }
 }
 
@@ -153,21 +180,37 @@ class OpsRoomSimulateCommand extends Command {
     final preset = argResults?['preset'] as String? ?? 'replication_stall';
     final autoApprove = argResults?['auto-approve'] as bool? ?? true;
 
-    stdout.writeln('\x1B[1;36m[OPSROOM SIMULATOR] Launching incident scenario: $preset...\x1B[0m\n');
+    stdout.writeln(
+      '\x1B[1;36m[OPSROOM SIMULATOR] Launching incident scenario: $preset...\x1B[0m\n',
+    );
 
     stdout.writeln('\x1B[1;34m[PHASE 1: TELEMETRY SENSING]\x1B[0m');
-    stdout.writeln('  → Evaluating Z-Score and IQR anomalies across edge telemetry...');
-    stdout.writeln('  \x1B[33m⚠ ANOMALY DETECTED: Value spiked to 4.2σ above baseline (Threshold: 3.0σ)\x1B[0m');
-    stdout.writeln('  → Auto-creating Incident #inc-${DateTime.now().millisecondsSinceEpoch % 10000}');
+    stdout.writeln(
+      '  → Evaluating Z-Score and IQR anomalies across edge telemetry...',
+    );
+    stdout.writeln(
+      '  \x1B[33m⚠ ANOMALY DETECTED: Value spiked to 4.2σ above baseline (Threshold: 3.0σ)\x1B[0m',
+    );
+    stdout.writeln(
+      '  → Auto-creating Incident #inc-${DateTime.now().millisecondsSinceEpoch % 10000}',
+    );
     stdout.writeln();
 
     stdout.writeln('\x1B[1;34m[PHASE 2: AMBIENT GROUNDING]\x1B[0m');
-    stdout.writeln('  → Grounding incident context via live MCP server schemas...');
-    stdout.writeln('  → Ingesting AST git diffs and active replication log stream...');
-    stdout.writeln('  \x1B[32m✔ Grounded knowledge graph constructed (Zero hallucination constraint)\x1B[0m');
+    stdout.writeln(
+      '  → Grounding incident context via live MCP server schemas...',
+    );
+    stdout.writeln(
+      '  → Ingesting AST git diffs and active replication log stream...',
+    );
+    stdout.writeln(
+      '  \x1B[32m✔ Grounded knowledge graph constructed (Zero hallucination constraint)\x1B[0m',
+    );
     stdout.writeln();
 
-    stdout.writeln('\x1B[1;34m[PHASE 3: SQUAD DELIBERATION & SYNTHETIC HUDDLE]\x1B[0m');
+    stdout.writeln(
+      '\x1B[1;34m[PHASE 3: SQUAD DELIBERATION & SYNTHETIC HUDDLE]\x1B[0m',
+    );
     final lines = [
       'Atlas Commander: Telemetry indicates replication lag > 3800ms on shard 3.',
       'SRE Reliability: I have queried the WAL queue. Recommending failover to standby-node-02.',
@@ -180,27 +223,51 @@ class OpsRoomSimulateCommand extends Command {
     stdout.writeln();
 
     stdout.writeln('\x1B[1;34m[PHASE 4: BYZANTINE QUORUM CONSENSUS]\x1B[0m');
-    stdout.writeln('  → Collecting Ed25519 signed ballots from 4 squad agents...');
-    stdout.writeln('  ✓ did:key:z6Mksre... [SRE]      Vote: APPROVE (Weight: 1.0, Sig: ed25519:valid)');
-    stdout.writeln('  ✓ did:key:z6Mksec... [SecOps]   Vote: APPROVE (Weight: 1.0, Sig: ed25519:valid)');
-    stdout.writeln('  ✓ did:key:z6Mkdata.. [DataOps]  Vote: APPROVE (Weight: 1.0, Sig: ed25519:valid)');
-    stdout.writeln('  ✓ did:key:z6Mkatlas. [Atlas]    Vote: APPROVE (Weight: 1.0, Sig: ed25519:valid)');
-    stdout.writeln('  \x1B[1;32m✔ 100.0% Consensus Quorum Achieved (Supermajority >= 67.0% met)\x1B[0m');
+    stdout.writeln(
+      '  → Collecting Ed25519 signed ballots from 4 squad agents...',
+    );
+    stdout.writeln(
+      '  ✓ did:key:z6Mksre... [SRE]      Vote: APPROVE (Weight: 1.0, Sig: ed25519:valid)',
+    );
+    stdout.writeln(
+      '  ✓ did:key:z6Mksec... [SecOps]   Vote: APPROVE (Weight: 1.0, Sig: ed25519:valid)',
+    );
+    stdout.writeln(
+      '  ✓ did:key:z6Mkdata.. [DataOps]  Vote: APPROVE (Weight: 1.0, Sig: ed25519:valid)',
+    );
+    stdout.writeln(
+      '  ✓ did:key:z6Mkatlas. [Atlas]    Vote: APPROVE (Weight: 1.0, Sig: ed25519:valid)',
+    );
+    stdout.writeln(
+      '  \x1B[1;32m✔ 100.0% Consensus Quorum Achieved (Supermajority >= 67.0% met)\x1B[0m',
+    );
     stdout.writeln();
 
     stdout.writeln('\x1B[1;34m[PHASE 5: TOOLHIVE SANDBOXED MITIGATION]\x1B[0m');
     if (autoApprove) {
       stdout.writeln('  \x1B[32m✔ Operator dual consent granted.\x1B[0m');
     }
-    stdout.writeln('  → Step 1/3: Drain buffer and redirect read replica traffic [COMPLETED]');
-    stdout.writeln('  → Step 2/3: Promote standby-node-02 to primary WAL writer [COMPLETED]');
-    stdout.writeln('  → Step 3/3: Re-verify replication parity & latency (<15ms) [COMPLETED]');
+    stdout.writeln(
+      '  → Step 1/3: Drain buffer and redirect read replica traffic [COMPLETED]',
+    );
+    stdout.writeln(
+      '  → Step 2/3: Promote standby-node-02 to primary WAL writer [COMPLETED]',
+    );
+    stdout.writeln(
+      '  → Step 3/3: Re-verify replication parity & latency (<15ms) [COMPLETED]',
+    );
     stdout.writeln();
 
-    stdout.writeln('\x1B[1;34m[PHASE 6: MERKLE PROOF & LIVE AUDIT LEDGER]\x1B[0m');
-    stdout.writeln('  → Root Hash: 0x${DateTime.now().millisecondsSinceEpoch.toRadixString(16).padLeft(40, 'a')}');
+    stdout.writeln(
+      '\x1B[1;34m[PHASE 6: MERKLE PROOF & LIVE AUDIT LEDGER]\x1B[0m',
+    );
+    stdout.writeln(
+      '  → Root Hash: 0x${DateTime.now().millisecondsSinceEpoch.toRadixString(16).padLeft(40, 'a')}',
+    );
     stdout.writeln('  → Invariant: Zero unverified writes confirmed.');
-    stdout.writeln('  \x1B[1;32m✔ INCIDENT RESOLVED CLEANLY IN 840ms WITH \$0 TAX\x1B[0m\n');
+    stdout.writeln(
+      '  \x1B[1;32m✔ INCIDENT RESOLVED CLEANLY IN 840ms WITH \$0 TAX\x1B[0m\n',
+    );
   }
 }
 
@@ -301,14 +368,17 @@ class OpsRoomAtlasCommand extends Command {
   @override
   Future<void> run() async {
     stdout.writeln('\x1B[1;36m${'=' * 84}\x1B[0m');
-    stdout.writeln('   ATLAS 2.0 REASONING & DELIBERATION ARCHITECTURE (THE EVOLUTION)');
+    stdout.writeln(
+      '   ATLAS 2.0 REASONING & DELIBERATION ARCHITECTURE (THE EVOLUTION)',
+    );
     stdout.writeln('\x1B[1;36m${'=' * 84}\x1B[0m\n');
 
     final phases = [
       {
         'phase': 'Phase 1',
         'title': 'Telemetry Sensing',
-        'desc': 'Z-Score & IQR anomaly evaluation (>3.0σ) across live edge nodes.',
+        'desc':
+            'Z-Score & IQR anomaly evaluation (>3.0σ) across live edge nodes.',
       },
       {
         'phase': 'Phase 2',
@@ -364,20 +434,36 @@ class OpsRoomHuddleCommand extends Command {
   @override
   Future<void> run() async {
     stdout.writeln('\x1B[1;35m${'=' * 84}\x1B[0m');
-    stdout.writeln('   ACR OPSROOM — SYNTHETIC MULTI-AGENT HUDDLE & VOCAL TELEMETRY');
+    stdout.writeln(
+      '   ACR OPSROOM — SYNTHETIC MULTI-AGENT HUDDLE & VOCAL TELEMETRY',
+    );
     stdout.writeln('\x1B[1;35m${'=' * 84}\x1B[0m\n');
 
     stdout.writeln('\x1B[1;37m[VOICE MODEL LOAD BALANCER TELEMETRY]\x1B[0m');
-    stdout.writeln('  Active Voice Tier:   \x1B[1;32mTier 2: Kokoro-82M v1.0 (High-Fidelity Neural)\x1B[0m');
-    stdout.writeln('  Compute Target:      WebGPU / WebAssembly SIMD Neural Voice Fabric');
-    stdout.writeln('  Model Footprint:     82.6 MB on-device (Explicit user consent verified)');
+    stdout.writeln(
+      '  Active Voice Tier:   \x1B[1;32mTier 2: Kokoro-82M v1.0 (High-Fidelity Neural)\x1B[0m',
+    );
+    stdout.writeln(
+      '  Compute Target:      WebGPU / WebAssembly SIMD Neural Voice Fabric',
+    );
+    stdout.writeln(
+      '  Model Footprint:     82.6 MB on-device (Explicit user consent verified)',
+    );
     stdout.writeln('  Synthesis Latency:   ~45ms per conversational utterance');
-    stdout.writeln('  Readiness Score:     100/100 (Optimal WebGPU & AudioContext Active)\n');
+    stdout.writeln(
+      '  Readiness Score:     100/100 (Optimal WebGPU & AudioContext Active)\n',
+    );
 
     stdout.writeln('\x1B[1;33m[AGENT VOCAL PERSONAS]\x1B[0m');
-    stdout.writeln('  • SRE Reliability:   Pitched Low-Baritone (Crisp, authoritative)');
-    stdout.writeln('  • SecOps Guard:      Mid-Range Tenor (Measured, analytical)');
+    stdout.writeln(
+      '  • SRE Reliability:   Pitched Low-Baritone (Crisp, authoritative)',
+    );
+    stdout.writeln(
+      '  • SecOps Guard:      Mid-Range Tenor (Measured, analytical)',
+    );
     stdout.writeln('  • DataOps DBA:       Deep Resonant (Steady, deliberate)');
-    stdout.writeln('  • Atlas Commander:   Modulated Neutral (Consensus coordinator)\n');
+    stdout.writeln(
+      '  • Atlas Commander:   Modulated Neutral (Consensus coordinator)\n',
+    );
   }
 }

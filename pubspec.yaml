@@ -1,6 +1,6 @@
 name: acr_cli
 description: Agentic Chat Rooms (ACR) Native CLI — High-performance terminal toolkit for multi-agent deliberation, Byzantine Quorum consensus, Atlas 2.0 DAG, and autonomous OpsRoom war room.
-version: 1.0.0
+version: 1.0.1
 repository: https://github.com/Agentic-Chat-Rooms-Protocol/acr-cli
 
 environment:

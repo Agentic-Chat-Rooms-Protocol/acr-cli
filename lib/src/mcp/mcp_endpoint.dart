@@ -85,9 +85,13 @@ class McpEndpoint {
       return homeDir.trim();
     }
     final env = environment ?? Platform.environment;
-    final candidate = env['USERPROFILE'] ?? env['HOME'];
-    if (candidate != null && candidate.trim().isNotEmpty) {
-      return candidate.trim();
+    final envProfile = env['USERPROFILE']?.trim();
+    if (envProfile != null && envProfile.isNotEmpty) {
+      return envProfile;
+    }
+    final envHome = env['HOME']?.trim();
+    if (envHome != null && envHome.isNotEmpty) {
+      return envHome;
     }
     return null;
   }
@@ -214,6 +218,7 @@ class McpEndpoint {
   /// Uses Clerk OAuth scopes (`["profile", "email"]`) — never legacy `acr:*` scopes.
   static McpResolution resolve({
     String? override,
+    String? entitlement,
     List<String> grantedScopes = const [],
     String? localUrl,
     Map<String, String>? environment,
@@ -227,9 +232,10 @@ class McpEndpoint {
     );
     final validatedLocal = validateLocal(candidate);
 
-    final modeOverride = (override ?? env['ACR_MCP_MODE'] ?? '')
-        .trim()
-        .toLowerCase();
+    final rawOverride = (override != null && override.trim().isNotEmpty)
+        ? override
+        : (env['ACR_MCP_MODE'] ?? '');
+    final modeOverride = rawOverride.trim().toLowerCase();
     if (modeOverride == 'local') {
       return McpResolution(
         mode: McpMode.local,
@@ -248,6 +254,24 @@ class McpEndpoint {
     if (modeOverride.isNotEmpty) {
       throw ArgumentError(
         'MCP mode override must be "local" or "remote", got "$modeOverride"',
+      );
+    }
+
+    final normalizedEntitlement = entitlement?.trim().toLowerCase();
+    if (normalizedEntitlement == 'pro' ||
+        normalizedEntitlement == 'enterprise') {
+      validateRemote(remoteUrl);
+      return const McpResolution(
+        mode: McpMode.remote,
+        url: remoteUrl,
+        reason: 'active cloud entitlement',
+      );
+    }
+    if (normalizedEntitlement == 'free' || normalizedEntitlement == 'none') {
+      return McpResolution(
+        mode: McpMode.local,
+        url: validatedLocal,
+        reason: 'no paid cloud entitlement; default',
       );
     }
 

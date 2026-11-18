@@ -11,7 +11,11 @@ class AcrClient {
     Map<String, String>? environment,
     String? homeDir,
     this.timeout = const Duration(seconds: 10),
-  }) : baseUrl = (baseUrl ?? defaultBaseUrl).replaceAll(RegExp(r'/+$'), ''),
+  }) : baseUrl =
+           ((baseUrl != null && baseUrl.trim().isNotEmpty)
+                   ? baseUrl.trim()
+                   : defaultBaseUrl)
+               .replaceAll(RegExp(r'/+$'), ''),
        apiToken = resolveApiToken(
          apiToken: apiToken,
          environment: environment,
@@ -41,9 +45,13 @@ class AcrClient {
     if (envToken != null && envToken.trim().isNotEmpty) {
       return envToken.trim();
     }
+    final envProfile = env['USERPROFILE']?.trim();
+    final envHome = env['HOME']?.trim();
     final resolvedHome = (homeDir != null && homeDir.trim().isNotEmpty)
         ? homeDir.trim()
-        : (env['USERPROFILE'] ?? env['HOME'])?.trim();
+        : ((envProfile != null && envProfile.isNotEmpty)
+              ? envProfile
+              : envHome);
     if (resolvedHome != null && resolvedHome.isNotEmpty) {
       final tokenFile = File(
         '$resolvedHome${Platform.pathSeparator}.acr${Platform.pathSeparator}api-token',

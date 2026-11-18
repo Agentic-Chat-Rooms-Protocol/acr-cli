@@ -5,17 +5,17 @@ import 'package:args/command_runner.dart';
 import 'package:http/http.dart' as http;
 import 'package:io/ansi.dart';
 import 'package:io/io.dart';
+
 import '../api/acr_client.dart';
 
-String _resolveMetaMcpUrl() =>
-    Platform.environment['ACR_META_MCP_URL'] ?? 'http://127.0.0.1:20445';
+String _resolveMetaMcpUrl() {
+  final raw = Platform.environment['ACR_META_MCP_URL']?.trim();
+  return (raw != null && raw.isNotEmpty) ? raw : 'http://127.0.0.1:20445';
+}
 
 Map<String, String> _metaMcpHeaders([Map<String, String>? extra]) {
   final token = (Platform.environment['ACR_META_MCP_API_TOKEN'] ?? '').trim();
-  return {
-    if (token.isNotEmpty) 'Authorization': 'Bearer $token',
-    ...?extra,
-  };
+  return {if (token.isNotEmpty) 'Authorization': 'Bearer $token', ...?extra};
 }
 
 class MetaMcpCommand extends Command {
@@ -51,7 +51,8 @@ class MetaMcpListCommand extends Command {
   final String name = 'list';
 
   @override
-  final String description = 'List all registered downstream MCP servers in the Meta-MCP registry.';
+  final String description =
+      'List all registered downstream MCP servers in the Meta-MCP registry.';
 
   @override
   Future<int> run() async {
@@ -62,16 +63,24 @@ class MetaMcpListCommand extends Command {
         headers: _metaMcpHeaders(),
       );
       if (res.statusCode != 200) {
-        stderr.writeln(red.wrap('[ERROR] Failed to fetch servers: HTTP ${res.statusCode}'));
+        stderr.writeln(
+          red.wrap('[ERROR] Failed to fetch servers: HTTP ${res.statusCode}'),
+        );
         return ExitCode.software.code;
       }
 
       final data = jsonDecode(res.body) as Map<String, dynamic>;
       final servers = (data['servers'] as List<dynamic>?) ?? [];
 
-      stdout.writeln('\n${cyan.wrap('======================================================================')}');
-      stdout.writeln(styleBold.wrap(' ACR META-MCP FORWARD PROXY — REGISTERED SERVERS'));
-      stdout.writeln('${cyan.wrap('======================================================================')}');
+      stdout.writeln(
+        '\n${cyan.wrap('======================================================================')}',
+      );
+      stdout.writeln(
+        styleBold.wrap(' ACR META-MCP FORWARD PROXY — REGISTERED SERVERS'),
+      );
+      stdout.writeln(
+        '${cyan.wrap('======================================================================')}',
+      );
 
       if (servers.isEmpty) {
         stdout.writeln(darkGray.wrap('  (No servers registered)'));
@@ -86,15 +95,21 @@ class MetaMcpListCommand extends Command {
 
           final badge = !enabled
               ? red.wrap('[DISABLED]')
-              : (quarantined ? yellow.wrap('[QUARANTINE]') : green.wrap('[ONLINE]'));
+              : (quarantined
+                    ? yellow.wrap('[QUARANTINE]')
+                    : green.wrap('[ONLINE]'));
 
-          stdout.writeln('  $badge ${styleBold.wrap(id.padRight(22))} | ${transport.padRight(16)} | $displayName ($tools tools)');
+          stdout.writeln(
+            '  $badge ${styleBold.wrap(id.padRight(22))} | ${transport.padRight(16)} | $displayName ($tools tools)',
+          );
         }
       }
       stdout.writeln('\nTotal: ${servers.length} servers registered\n');
       return ExitCode.success.code;
     } catch (e) {
-      stderr.writeln(red.wrap('[ERROR] Meta-MCP Proxy unreachable at $metaUrl: $e'));
+      stderr.writeln(
+        red.wrap('[ERROR] Meta-MCP Proxy unreachable at $metaUrl: $e'),
+      );
       return ExitCode.unavailable.code;
     }
   }
@@ -105,7 +120,8 @@ class MetaMcpImportCommand extends Command {
   final String name = 'import';
 
   @override
-  final String description = 'Import and compile standard mcp_config.json into versioned Install Manifest.';
+  final String description =
+      'Import and compile standard mcp_config.json into versioned Install Manifest.';
 
   MetaMcpImportCommand() {
     argParser.addOption('file', abbr: 'f', help: 'Path to mcp_config.json');
@@ -114,10 +130,14 @@ class MetaMcpImportCommand extends Command {
   @override
   Future<int> run() async {
     final metaUrl = _resolveMetaMcpUrl();
-    final filePath = argResults?['file'] as String? ?? (argResults?.rest.isNotEmpty == true ? argResults!.rest.first : null);
+    final filePath =
+        argResults?['file'] as String? ??
+        (argResults?.rest.isNotEmpty == true ? argResults!.rest.first : null);
 
     if (filePath == null) {
-      stderr.writeln(yellow.wrap('Usage: acr meta-mcp import <path/to/mcp_config.json>'));
+      stderr.writeln(
+        yellow.wrap('Usage: acr meta-mcp import <path/to/mcp_config.json>'),
+      );
       return ExitCode.usage.code;
     }
 
@@ -131,7 +151,10 @@ class MetaMcpImportCommand extends Command {
     try {
       final res = await http.post(
         Uri.parse('$metaUrl/api/v1/meta-mcp/servers/import'),
-        headers: _metaMcpHeaders({'Content-Type': 'application/json', 'x-acr-agent-did': 'did:key:cli-admin'}),
+        headers: _metaMcpHeaders({
+          'Content-Type': 'application/json',
+          'x-acr-agent-did': 'did:key:cli-admin',
+        }),
         body: content,
       );
 
@@ -141,14 +164,20 @@ class MetaMcpImportCommand extends Command {
       }
 
       final data = jsonDecode(res.body) as Map<String, dynamic>;
-      stdout.writeln(green.wrap('✔ Successfully compiled and installed manifest!'));
+      stdout.writeln(
+        green.wrap('✔ Successfully compiled and installed manifest!'),
+      );
       stdout.writeln('  Manifest Version: ${data['manifestVersion']}');
       stdout.writeln('  SHA-256 Fingerprint: ${data['fingerprintSha256']}');
-      stdout.writeln('  Installed Servers: ${(data['installedServers'] as List).join(', ')}');
+      stdout.writeln(
+        '  Installed Servers: ${(data['installedServers'] as List).join(', ')}',
+      );
       stdout.writeln('  Redacted Secrets in Vault: ${data['secretCount']}\n');
       return ExitCode.success.code;
     } catch (e) {
-      stderr.writeln(red.wrap('[ERROR] Meta-MCP Proxy unreachable at $metaUrl: $e'));
+      stderr.writeln(
+        red.wrap('[ERROR] Meta-MCP Proxy unreachable at $metaUrl: $e'),
+      );
       return ExitCode.unavailable.code;
     }
   }
@@ -161,14 +190,18 @@ class MetaMcpToggleCommand extends Command {
   String get name => enable ? 'enable' : 'disable';
 
   @override
-  String get description => enable ? 'Enable a registered downstream MCP server.' : 'Disable a registered downstream MCP server.';
+  String get description => enable
+      ? 'Enable a registered downstream MCP server.'
+      : 'Disable a registered downstream MCP server.';
 
   MetaMcpToggleCommand({required this.enable});
 
   @override
   Future<int> run() async {
     final metaUrl = _resolveMetaMcpUrl();
-    final serverId = argResults?.rest.isNotEmpty == true ? argResults!.rest.first : null;
+    final serverId = argResults?.rest.isNotEmpty == true
+        ? argResults!.rest.first
+        : null;
 
     if (serverId == null) {
       stderr.writeln(yellow.wrap('Usage: acr meta-mcp $name <serverId>'));
@@ -183,14 +216,22 @@ class MetaMcpToggleCommand extends Command {
       );
 
       if (res.statusCode != 200) {
-        stderr.writeln(red.wrap('[ERROR] Failed to update server: ${res.body}'));
+        stderr.writeln(
+          red.wrap('[ERROR] Failed to update server: ${res.body}'),
+        );
         return ExitCode.software.code;
       }
 
-      stdout.writeln(green.wrap('✔ Server "$serverId" is now ${enable ? 'ENABLED' : 'DISABLED'}.'));
+      stdout.writeln(
+        green.wrap(
+          '✔ Server "$serverId" is now ${enable ? 'ENABLED' : 'DISABLED'}.',
+        ),
+      );
       return ExitCode.success.code;
     } catch (e) {
-      stderr.writeln(red.wrap('[ERROR] Meta-MCP Proxy unreachable at $metaUrl: $e'));
+      stderr.writeln(
+        red.wrap('[ERROR] Meta-MCP Proxy unreachable at $metaUrl: $e'),
+      );
       return ExitCode.unavailable.code;
     }
   }
@@ -204,7 +245,13 @@ class MetaMcpToolsCommand extends Command {
   final String description = 'List tools in Raw, Policy, or Projected catalog.';
 
   MetaMcpToolsCommand() {
-    argParser.addOption('view', abbr: 'v', defaultsTo: 'projected', allowed: ['raw', 'policy', 'projected'], help: 'Catalog view layer');
+    argParser.addOption(
+      'view',
+      abbr: 'v',
+      defaultsTo: 'projected',
+      allowed: ['raw', 'policy', 'projected'],
+      help: 'Catalog view layer',
+    );
   }
 
   @override
@@ -218,27 +265,39 @@ class MetaMcpToolsCommand extends Command {
         headers: _metaMcpHeaders(),
       );
       if (res.statusCode != 200) {
-        stderr.writeln(red.wrap('[ERROR] Failed to fetch tools: HTTP ${res.statusCode}'));
+        stderr.writeln(
+          red.wrap('[ERROR] Failed to fetch tools: HTTP ${res.statusCode}'),
+        );
         return ExitCode.software.code;
       }
 
       final data = jsonDecode(res.body) as Map<String, dynamic>;
       final tools = (data['tools'] as List<dynamic>?) ?? [];
 
-      stdout.writeln('\n${cyan.wrap('======================================================================')}');
-      stdout.writeln(styleBold.wrap(' ACR META-MCP TOOL CATALOG (${view.toUpperCase()})'));
-      stdout.writeln('${cyan.wrap('======================================================================')}');
+      stdout.writeln(
+        '\n${cyan.wrap('======================================================================')}',
+      );
+      stdout.writeln(
+        styleBold.wrap(' ACR META-MCP TOOL CATALOG (${view.toUpperCase()})'),
+      );
+      stdout.writeln(
+        '${cyan.wrap('======================================================================')}',
+      );
 
       for (final t in tools) {
         final name = t['name'] as String;
         final serverId = t['serverId'] as String? ?? 'default';
         final desc = t['description'] as String? ?? '';
-        stdout.writeln('  • ${styleBold.wrap(name.padRight(34))} | ${darkGray.wrap('[$serverId]')} $desc');
+        stdout.writeln(
+          '  • ${styleBold.wrap(name.padRight(34))} | ${darkGray.wrap('[$serverId]')} $desc',
+        );
       }
       stdout.writeln('\nTotal tools: ${tools.length}\n');
       return ExitCode.success.code;
     } catch (e) {
-      stderr.writeln(red.wrap('[ERROR] Meta-MCP Proxy unreachable at $metaUrl: $e'));
+      stderr.writeln(
+        red.wrap('[ERROR] Meta-MCP Proxy unreachable at $metaUrl: $e'),
+      );
       return ExitCode.unavailable.code;
     }
   }
@@ -249,14 +308,19 @@ class MetaMcpCallCommand extends Command {
   final String name = 'call';
 
   @override
-  final String description = 'Execute a governed tool invocation through Meta-MCP policy engine.';
+  final String description =
+      'Execute a governed tool invocation through Meta-MCP policy engine.';
 
   @override
   Future<int> run() async {
     final metaUrl = _resolveMetaMcpUrl();
     final rest = argResults?.rest ?? [];
     if (rest.isEmpty) {
-      stderr.writeln(yellow.wrap('Usage: acr meta-mcp call <namespaced_tool_name> [json_arguments]'));
+      stderr.writeln(
+        yellow.wrap(
+          'Usage: acr meta-mcp call <namespaced_tool_name> [json_arguments]',
+        ),
+      );
       return ExitCode.usage.code;
     }
 
@@ -274,7 +338,10 @@ class MetaMcpCallCommand extends Command {
     try {
       final res = await http.post(
         Uri.parse('$metaUrl/api/v1/meta-mcp/tools/call'),
-        headers: _metaMcpHeaders({'Content-Type': 'application/json', 'x-acr-agent-did': 'did:key:cli-agent'}),
+        headers: _metaMcpHeaders({
+          'Content-Type': 'application/json',
+          'x-acr-agent-did': 'did:key:cli-agent',
+        }),
         body: jsonEncode({'toolName': toolName, 'args': args}),
       );
 
@@ -282,7 +349,9 @@ class MetaMcpCallCommand extends Command {
       stdout.writeln(const JsonEncoder.withIndent('  ').convert(data));
       return ExitCode.success.code;
     } catch (e) {
-      stderr.writeln(red.wrap('[ERROR] Meta-MCP Proxy unreachable at $metaUrl: $e'));
+      stderr.writeln(
+        red.wrap('[ERROR] Meta-MCP Proxy unreachable at $metaUrl: $e'),
+      );
       return ExitCode.unavailable.code;
     }
   }
@@ -293,7 +362,8 @@ class MetaMcpAuditCommand extends Command {
   final String name = 'audit';
 
   @override
-  final String description = 'Display live cryptographic audit log trail for Meta-MCP operations.';
+  final String description =
+      'Display live cryptographic audit log trail for Meta-MCP operations.';
 
   @override
   Future<int> run() async {
@@ -304,30 +374,50 @@ class MetaMcpAuditCommand extends Command {
         headers: _metaMcpHeaders(),
       );
       if (res.statusCode != 200) {
-        stderr.writeln(red.wrap('[ERROR] Failed to fetch audit logs: HTTP ${res.statusCode}'));
+        stderr.writeln(
+          red.wrap(
+            '[ERROR] Failed to fetch audit logs: HTTP ${res.statusCode}',
+          ),
+        );
         return ExitCode.software.code;
       }
 
       final data = jsonDecode(res.body) as Map<String, dynamic>;
       final logs = (data['logs'] as List<dynamic>?) ?? [];
 
-      stdout.writeln('\n${cyan.wrap('======================================================================')}');
+      stdout.writeln(
+        '\n${cyan.wrap('======================================================================')}',
+      );
       stdout.writeln(styleBold.wrap(' ACR META-MCP REPLAY AUDIT TRAIL'));
-      stdout.writeln('${cyan.wrap('======================================================================')}');
+      stdout.writeln(
+        '${cyan.wrap('======================================================================')}',
+      );
 
       for (final a in logs) {
-        final ts = (a['timestamp'] as String? ?? '').length > 19 ? (a['timestamp'] as String).substring(11, 19) : a['timestamp'];
+        final ts = (a['timestamp'] as String? ?? '').length > 19
+            ? (a['timestamp'] as String).substring(11, 19)
+            : a['timestamp'];
         final event = (a['eventType'] as String? ?? '').padRight(18);
-        final status = a['status'] == 'SUCCESS' ? green.wrap('SUCCESS ') : (a['status'] == 'DENIED' ? red.wrap('DENIED  ') : yellow.wrap(a['status']));
+        final status = a['status'] == 'SUCCESS'
+            ? green.wrap('SUCCESS ')
+            : (a['status'] == 'DENIED'
+                  ? red.wrap('DENIED  ')
+                  : yellow.wrap(a['status']));
         final actor = a['actorDid'] as String? ?? 'unknown';
         final target = a['toolName'] ?? a['serverId'] ?? '';
-        final latency = a['latencyMs'] != null ? '${(a['latencyMs'] as num).toStringAsFixed(2)}ms' : '-';
+        final latency = a['latencyMs'] != null
+            ? '${(a['latencyMs'] as num).toStringAsFixed(2)}ms'
+            : '-';
 
-        stdout.writeln('  [$ts] $event | $status | $actor -> $target ($latency)');
+        stdout.writeln(
+          '  [$ts] $event | $status | $actor -> $target ($latency)',
+        );
       }
       return ExitCode.success.code;
     } catch (e) {
-      stderr.writeln(red.wrap('[ERROR] Meta-MCP Proxy unreachable at $metaUrl: $e'));
+      stderr.writeln(
+        red.wrap('[ERROR] Meta-MCP Proxy unreachable at $metaUrl: $e'),
+      );
       return ExitCode.unavailable.code;
     }
   }
@@ -338,23 +428,44 @@ class MetaMcpVaultCommand extends Command {
   final String name = 'vault';
 
   @override
-  final String description = 'Manage encrypted Auth Vault credentials (SQLite3MultipleCiphers & SQLCipher).';
+  final String description =
+      'Manage encrypted Auth Vault credentials (SQLite3MultipleCiphers & SQLCipher).';
 
   MetaMcpVaultCommand() {
-    argParser.addOption('action', abbr: 'a', defaultsTo: 'list', allowed: ['list', 'set', 'delete', 'rotate']);
+    argParser.addOption(
+      'action',
+      abbr: 'a',
+      defaultsTo: 'list',
+      allowed: ['list', 'set', 'delete', 'rotate'],
+    );
     argParser.addOption('server', abbr: 's', help: 'Server ID for secret');
     argParser.addOption('key', abbr: 'k', help: 'Secret key identifier');
     argParser.addOption('value', abbr: 'v', help: 'Secret plaintext value');
-    argParser.addOption('domain', abbr: 'd', defaultsTo: 'personal', allowed: ['personal', 'org', 'enterprise', 'ephemeral']);
-    argParser.addOption('cipher', abbr: 'c', defaultsTo: 'aes-256-gcm', allowed: ['aes-256-gcm', 'chacha20-poly1305', 'sqlcipher-v4']);
+    argParser.addOption(
+      'domain',
+      abbr: 'd',
+      defaultsTo: 'personal',
+      allowed: ['personal', 'org', 'enterprise', 'ephemeral'],
+    );
+    argParser.addOption(
+      'cipher',
+      abbr: 'c',
+      defaultsTo: 'aes-256-gcm',
+      allowed: ['aes-256-gcm', 'chacha20-poly1305', 'sqlcipher-v4'],
+    );
     argParser.addOption('ref-id', help: 'Ref ID for deletion');
-    argParser.addOption('new-secret', help: 'New master passphrase for rotation');
+    argParser.addOption(
+      'new-secret',
+      help: 'New master passphrase for rotation',
+    );
   }
 
   @override
   Future<int> run() async {
     final metaUrl = _resolveMetaMcpUrl();
-    final action = argResults?['action'] as String? ?? (argResults?.rest.isNotEmpty == true ? argResults!.rest.first : 'list');
+    final action =
+        argResults?['action'] as String? ??
+        (argResults?.rest.isNotEmpty == true ? argResults!.rest.first : 'list');
 
     try {
       if (action == 'list') {
@@ -363,16 +474,26 @@ class MetaMcpVaultCommand extends Command {
           headers: _metaMcpHeaders(),
         );
         if (res.statusCode != 200) {
-          stderr.writeln(red.wrap('[ERROR] Failed to list vault secrets: HTTP ${res.statusCode}'));
+          stderr.writeln(
+            red.wrap(
+              '[ERROR] Failed to list vault secrets: HTTP ${res.statusCode}',
+            ),
+          );
           return ExitCode.software.code;
         }
 
         final data = jsonDecode(res.body) as Map<String, dynamic>;
         final secrets = (data['secrets'] as List<dynamic>?) ?? [];
 
-        stdout.writeln('\n${cyan.wrap('======================================================================')}');
-        stdout.writeln(styleBold.wrap(' ACR META-MCP AUTH VAULT — ENCRYPTED SECRETS'));
-        stdout.writeln('${cyan.wrap('======================================================================')}');
+        stdout.writeln(
+          '\n${cyan.wrap('======================================================================')}',
+        );
+        stdout.writeln(
+          styleBold.wrap(' ACR META-MCP AUTH VAULT — ENCRYPTED SECRETS'),
+        );
+        stdout.writeln(
+          '${cyan.wrap('======================================================================')}',
+        );
 
         if (secrets.isEmpty) {
           stdout.writeln(darkGray.wrap('  (No secrets stored in vault)'));
@@ -382,46 +503,80 @@ class MetaMcpVaultCommand extends Command {
             final refId = (s['refId'] as String? ?? '').padRight(32);
             final serverId = (s['serverId'] as String? ?? '').padRight(18);
             final cipher = s['algorithm'] ?? 'aes-256-gcm';
-            stdout.writeln('  ${magenta.wrap(domain)} ${styleBold.wrap(refId)} | $serverId | Cipher: $cipher');
+            stdout.writeln(
+              '  ${magenta.wrap(domain)} ${styleBold.wrap(refId)} | $serverId | Cipher: $cipher',
+            );
           }
         }
         stdout.writeln('\nTotal: ${secrets.length} vaulted credentials\n');
         return ExitCode.success.code;
       } else if (action == 'set') {
-        final server = argResults?['server'] as String? ?? (((argResults?.rest.length ?? 0) > 1) ? argResults!.rest[1] : null);
-        final key = argResults?['key'] as String? ?? (((argResults?.rest.length ?? 0) > 2) ? argResults!.rest[2] : null);
-        final value = argResults?['value'] as String? ?? (((argResults?.rest.length ?? 0) > 3) ? argResults!.rest[3] : null);
+        final server =
+            argResults?['server'] as String? ??
+            (((argResults?.rest.length ?? 0) > 1) ? argResults!.rest[1] : null);
+        final key =
+            argResults?['key'] as String? ??
+            (((argResults?.rest.length ?? 0) > 2) ? argResults!.rest[2] : null);
+        final value =
+            argResults?['value'] as String? ??
+            (((argResults?.rest.length ?? 0) > 3) ? argResults!.rest[3] : null);
         final domain = argResults?['domain'] as String? ?? 'personal';
         final cipher = argResults?['cipher'] as String? ?? 'aes-256-gcm';
 
         if (server == null || key == null || value == null) {
-          stderr.writeln(yellow.wrap('Usage: acr meta-mcp vault --action=set --server=<id> --key=<key> --value=<val>'));
+          stderr.writeln(
+            yellow.wrap(
+              'Usage: acr meta-mcp vault --action=set --server=<id> --key=<key> --value=<val>',
+            ),
+          );
           return ExitCode.usage.code;
         }
 
         final res = await http.post(
           Uri.parse('$metaUrl/api/v1/meta-mcp/vault/secrets'),
           headers: _metaMcpHeaders({'Content-Type': 'application/json'}),
-          body: jsonEncode({'serverId': server, 'key': key, 'value': value, 'domain': domain, 'cipher': cipher}),
+          body: jsonEncode({
+            'serverId': server,
+            'key': key,
+            'value': value,
+            'domain': domain,
+            'cipher': cipher,
+          }),
         );
-        stdout.writeln(green.wrap('[SUCCESS] Stored secret in encrypted vault: ${res.body}'));
+        stdout.writeln(
+          green.wrap('[SUCCESS] Stored secret in encrypted vault: ${res.body}'),
+        );
         return ExitCode.success.code;
       } else if (action == 'delete') {
-        final refId = argResults?['ref-id'] as String? ?? (((argResults?.rest.length ?? 0) > 1) ? argResults!.rest[1] : null);
+        final refId =
+            argResults?['ref-id'] as String? ??
+            (((argResults?.rest.length ?? 0) > 1) ? argResults!.rest[1] : null);
         if (refId == null) {
-          stderr.writeln(yellow.wrap('Usage: acr meta-mcp vault --action=delete --ref-id=<ref_id>'));
+          stderr.writeln(
+            yellow.wrap(
+              'Usage: acr meta-mcp vault --action=delete --ref-id=<ref_id>',
+            ),
+          );
           return ExitCode.usage.code;
         }
         final res = await http.delete(
           Uri.parse('$metaUrl/api/v1/meta-mcp/vault/secrets/$refId'),
           headers: _metaMcpHeaders(),
         );
-        stdout.writeln(green.wrap('[SUCCESS] Deleted secret from vault: ${res.body}'));
+        stdout.writeln(
+          green.wrap('[SUCCESS] Deleted secret from vault: ${res.body}'),
+        );
         return ExitCode.success.code;
       } else if (action == 'rotate') {
-        final newSecret = argResults?['new-secret'] as String? ?? (((argResults?.rest.length ?? 0) > 1) ? argResults!.rest[1] : null);
+        final newSecret =
+            argResults?['new-secret'] as String? ??
+            (((argResults?.rest.length ?? 0) > 1) ? argResults!.rest[1] : null);
         if (newSecret == null) {
-          stderr.writeln(yellow.wrap('Usage: acr meta-mcp vault --action=rotate --new-secret=<passphrase>'));
+          stderr.writeln(
+            yellow.wrap(
+              'Usage: acr meta-mcp vault --action=rotate --new-secret=<passphrase>',
+            ),
+          );
           return ExitCode.usage.code;
         }
         final res = await http.post(
@@ -429,7 +584,9 @@ class MetaMcpVaultCommand extends Command {
           headers: _metaMcpHeaders({'Content-Type': 'application/json'}),
           body: jsonEncode({'newMasterSecret': newSecret}),
         );
-        stdout.writeln(green.wrap('[SUCCESS] Vault master passphrase rotated: ${res.body}'));
+        stdout.writeln(
+          green.wrap('[SUCCESS] Vault master passphrase rotated: ${res.body}'),
+        );
         return ExitCode.success.code;
       }
       return ExitCode.success.code;
@@ -439,4 +596,3 @@ class MetaMcpVaultCommand extends Command {
     }
   }
 }
-

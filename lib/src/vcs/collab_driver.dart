@@ -45,7 +45,11 @@ class FakeCommandExecutor {
   final Map<String, ProcessResult> responses = {};
   ProcessResult defaultResult = ProcessResult(0, 0, '', '');
 
-  void setResponse(String executable, List<String> arguments, ProcessResult result) {
+  void setResponse(
+    String executable,
+    List<String> arguments,
+    ProcessResult result,
+  ) {
     responses['$executable ${arguments.join(' ')}'] = result;
   }
 
@@ -55,12 +59,14 @@ class FakeCommandExecutor {
     String? workingDirectory,
     Map<String, String>? environment,
   }) async {
-    invocations.add(RecordedCommand(
-      executable,
-      arguments,
-      workingDirectory: workingDirectory,
-      environment: environment,
-    ));
+    invocations.add(
+      RecordedCommand(
+        executable,
+        arguments,
+        workingDirectory: workingDirectory,
+        environment: environment,
+      ),
+    );
 
     final key = '$executable ${arguments.join(' ')}';
     if (responses.containsKey(key)) {
@@ -115,7 +121,7 @@ class VcsCollabDriver {
   final CommandExecutor executor;
 
   VcsCollabDriver({CommandExecutor? executor})
-      : executor = executor ?? defaultCommandExecutor;
+    : executor = executor ?? defaultCommandExecutor;
 
   // ==========================================
   // GitHub (gh CLI) Collaboration Operations
@@ -331,14 +337,7 @@ class VcsCollabDriver {
     bool deleteBranch = false,
   }) async {
     final methodFlag = '--$method';
-    final args = [
-      'pr',
-      'merge',
-      number.toString(),
-      '--repo',
-      repo,
-      methodFlag,
-    ];
+    final args = ['pr', 'merge', number.toString(), '--repo', repo, methodFlag];
     if (auto) args.add('--auto');
     if (admin) args.add('--admin');
     if (deleteBranch) args.add('--delete-branch');
@@ -393,8 +392,12 @@ class VcsCollabDriver {
   }
 
   /// Show revision log parsed into structured JujutsuChange records conforming to collab-vcs.contract.json.
-  Future<List<JujutsuChange>> jjLogChanges({int? limit, String? workingDirectory}) async {
-    const template = 'change_id ++ "\\t" ++ commit_id ++ "\\t" ++ (if(current_working_copy, "true", "false")) ++ "\\t" ++ description ++ "\\n"';
+  Future<List<JujutsuChange>> jjLogChanges({
+    int? limit,
+    String? workingDirectory,
+  }) async {
+    const template =
+        'change_id ++ "\\t" ++ commit_id ++ "\\t" ++ (if(current_working_copy, "true", "false")) ++ "\\t" ++ description ++ "\\n"';
     final args = ['log', '-T', template];
     if (limit != null && limit > 0) {
       args.addAll(['-n', limit.toString()]);
@@ -404,23 +407,30 @@ class VcsCollabDriver {
       throw ProcessException('jj', args, res.stderr.toString(), res.exitCode);
     }
 
-    final lines = res.stdout.toString().trim().split('\n').where((l) => l.trim().isNotEmpty);
+    final lines = res.stdout
+        .toString()
+        .trim()
+        .split('\n')
+        .where((l) => l.trim().isNotEmpty);
     final changes = <JujutsuChange>[];
     for (final line in lines) {
       final parts = line.split('\t');
       if (parts.length >= 2) {
-        changes.add(JujutsuChange(
-          changeId: parts[0].trim(),
-          commitId: parts[1].trim().isEmpty ? null : parts[1].trim(),
-          isWorkingCopy: parts.length > 2 && parts[2].trim() == 'true',
-          description: parts.length > 3 ? parts.sublist(3).join('\t').trim() : '',
-        ));
+        changes.add(
+          JujutsuChange(
+            changeId: parts[0].trim(),
+            commitId: parts[1].trim().isEmpty ? null : parts[1].trim(),
+            isWorkingCopy: parts.length > 2 && parts[2].trim() == 'true',
+            description: parts.length > 3
+                ? parts.sublist(3).join('\t').trim()
+                : '',
+          ),
+        );
       } else {
         final tokens = line.trim().split(RegExp(r'\s+'));
-        changes.add(JujutsuChange(
-          changeId: tokens.first,
-          description: line.trim(),
-        ));
+        changes.add(
+          JujutsuChange(changeId: tokens.first, description: line.trim()),
+        );
       }
     }
     return changes;

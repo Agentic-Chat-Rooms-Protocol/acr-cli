@@ -5,13 +5,12 @@ import 'package:io/io.dart';
 import 'package:stack_trace/stack_trace.dart';
 import 'package:acr_cli/acr_cli.dart';
 
-const String acrCliVersion = '1.0.0';
+const String acrCliVersion = '1.0.1';
 
 void main(List<String> args) {
   Chain.capture(
     () async {
-      final defaultUrl =
-          Platform.environment['ACR_DAEMON_URL'] ?? AcrClient.defaultBaseUrl;
+      final defaultUrl = McpEndpoint.resolveLocalUrlCandidate();
 
       final runner = CommandRunner(
         'acr',

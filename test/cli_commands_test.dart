@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:acr_cli/src/api/acr_client.dart';
 import 'package:test/test.dart';
 
@@ -122,10 +123,11 @@ void main() {
     });
 
     test('Displays usage help text with all registered commands', () async {
-      final res = await Process.run(
-        Platform.resolvedExecutable,
-        ['run', 'bin/acr.dart', '--help'],
-      );
+      final res = await Process.run(Platform.resolvedExecutable, [
+        'run',
+        'bin/acr.dart',
+        '--help',
+      ]);
 
       expect(res.exitCode, equals(0));
       final out = res.stdout.toString();
@@ -149,35 +151,54 @@ void main() {
     });
 
     test('Prints version flag correctly', () async {
-      final res = await Process.run(
-        Platform.resolvedExecutable,
-        ['run', 'bin/acr.dart', '--version'],
-      );
+      final res = await Process.run(Platform.resolvedExecutable, [
+        'run',
+        'bin/acr.dart',
+        '--version',
+      ]);
 
       expect(res.exitCode, equals(0));
-      expect(res.stdout.toString(), contains('1.0.0'));
+      expect(res.stdout.toString(), contains('1.0.1'));
     });
 
-    test('Rejects dissent voting without rationale with exit code 64', () async {
-      final res = await Process.run(
-        Platform.resolvedExecutable,
-        ['run', 'bin/acr.dart', 'proposals', 'vote', '-i', 'prop-test', '-c', 'DISSENT'],
-      );
+    test(
+      'Rejects dissent voting without rationale with exit code 64',
+      () async {
+        final res = await Process.run(Platform.resolvedExecutable, [
+          'run',
+          'bin/acr.dart',
+          'proposals',
+          'vote',
+          '-i',
+          'prop-test',
+          '-c',
+          'DISSENT',
+        ]);
 
-      expect(res.exitCode, equals(64));
-      expect(res.stderr.toString(), contains('--rationale is mandatory when voting DISSENT'));
-    });
+        expect(res.exitCode, equals(64));
+        expect(
+          res.stderr.toString(),
+          contains('--rationale is mandatory when voting DISSENT'),
+        );
+      },
+    );
 
-    test('Rejects insecure non-HTTPS tunnel cloud-url with exit code 64', () async {
-      final res = await Process.run(
-        Platform.resolvedExecutable,
-        ['run', 'bin/acr.dart', 'tunnel', '--cloud-url', 'http://143.198.98.229:20443'],
-      );
+    test(
+      'Rejects insecure non-HTTPS tunnel cloud-url with exit code 64',
+      () async {
+        final res = await Process.run(Platform.resolvedExecutable, [
+          'run',
+          'bin/acr.dart',
+          'tunnel',
+          '--cloud-url',
+          'http://143.198.98.229:20443',
+        ]);
 
-      expect(res.exitCode, equals(64));
-      expect(res.stderr.toString(), contains('HTTPS URL'));
-      expect(res.stdout.toString(), isNot(contains('[OK]')));
-    });
+        expect(res.exitCode, equals(64));
+        expect(res.stderr.toString(), contains('HTTPS URL'));
+        expect(res.stdout.toString(), isNot(contains('[OK]')));
+      },
+    );
 
     test('Queries live ACR daemon health successfully', () async {
       final res = await Process.run(
@@ -255,11 +276,44 @@ void main() {
       );
     });
 
-    test('AcrClient verifyAuditChain recomputes continuity successfully', () async {
-      final client = AcrClient(baseUrl: baseUrl, apiToken: testToken);
-      final res = await client.verifyAuditChain();
-      expect(res['is_valid'], isTrue);
-    });
+    test(
+      'AcrClient verifyAuditChain recomputes continuity successfully',
+      () async {
+        final client = AcrClient(baseUrl: baseUrl, apiToken: testToken);
+        final res = await client.verifyAuditChain();
+        expect(res['is_valid'], isTrue);
+      },
+    );
+
+    test(
+      'Resolves daemon URL from ~/.acr/ports.json when ACR_DAEMON_URL is unset',
+      () async {
+        final tempHome = Directory.systemTemp.createTempSync('acr_cli_ports_');
+        try {
+          final acrDir = Directory(
+            '${tempHome.path}${Platform.pathSeparator}.acr',
+          )..createSync(recursive: true);
+          File('${acrDir.path}${Platform.pathSeparator}ports.json')
+              .writeAsStringSync(
+                jsonEncode({
+                  'ports': {'acr-core': mockDaemon.port},
+                }),
+              );
+          File('${acrDir.path}${Platform.pathSeparator}api-token')
+              .writeAsStringSync(testToken);
+
+          final res = await Process.run(
+            Platform.resolvedExecutable,
+            ['run', 'bin/acr.dart', 'rooms', 'list'],
+            environment: {'USERPROFILE': tempHome.path, 'HOME': tempHome.path},
+          );
+          expect(res.exitCode, equals(0));
+          expect(res.stdout.toString(), contains('#consensus-main'));
+        } finally {
+          tempHome.deleteSync(recursive: true);
+        }
+      },
+    );
 
     test('Queries and updates security config via AcrClient', () async {
       final client = AcrClient(baseUrl: baseUrl, apiToken: testToken);
@@ -267,7 +321,10 @@ void main() {
       expect(config.containsKey('enable_cors'), isTrue);
       expect(config.containsKey('enable_pna'), isTrue);
 
-      final updated = await client.updateSecurityConfig(enableCors: true, enablePna: true);
+      final updated = await client.updateSecurityConfig(
+        enableCors: true,
+        enablePna: true,
+      );
       expect(updated['enable_cors'], isTrue);
       expect(updated['enable_pna'], isTrue);
     });

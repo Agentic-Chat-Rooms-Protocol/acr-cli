@@ -1,6 +1,8 @@
 import 'dart:io';
+
 import 'package:args/command_runner.dart';
 import 'package:io/io.dart';
+
 import '../api/acr_client.dart';
 
 class ConfigCommand extends Command<void> {
@@ -14,7 +16,8 @@ class ConfigCommand extends Command<void> {
   String get name => 'config';
 
   @override
-  String get description => 'Manage ACR Daemon security policies, CORS, PNA, and runtime settings.';
+  String get description =>
+      'Manage ACR Daemon security policies, CORS, PNA, and runtime settings.';
 
   @override
   Future<void> run() async {
@@ -43,7 +46,8 @@ class ConfigSecurityCommand extends Command<void> {
   String get name => 'security';
 
   @override
-  String get description => 'Inspect and configure Private Network Access (PNA) and CORS on the daemon.';
+  String get description =>
+      'Inspect and configure Private Network Access (PNA) and CORS on the daemon.';
 
   @override
   Future<void> run() async {
@@ -64,7 +68,9 @@ class ConfigSecurityCommand extends Command<void> {
       final config = await client.fetchSecurityConfig();
       _renderSecurityConfig(config);
     } catch (e) {
-      stderr.writeln('\x1B[1;31m[ERROR] Failed to communicate with ACR Daemon at ${client.baseUrl}: $e\x1B[0m');
+      stderr.writeln(
+        '\x1B[1;31m[ERROR] Failed to communicate with ACR Daemon at ${client.baseUrl}: $e\x1B[0m',
+      );
       exit(1);
     }
   }
@@ -72,23 +78,38 @@ class ConfigSecurityCommand extends Command<void> {
   void _renderSecurityConfig(Map<String, dynamic> config) {
     final bool enableCors = config['enable_cors'] as bool? ?? false;
     final bool enablePna = config['enable_pna'] as bool? ?? false;
-    final String corsStatus = config['cors_status'] as String? ?? (enableCors ? 'active' : 'disabled');
-    final String pnaStatus = config['pna_status'] as String? ?? (enablePna ? 'active' : 'disabled');
+    final String corsStatus =
+        config['cors_status'] as String? ??
+        (enableCors ? 'active' : 'disabled');
+    final String pnaStatus =
+        config['pna_status'] as String? ?? (enablePna ? 'active' : 'disabled');
     final String version = config['version'] as String? ?? 'v1.0.0';
 
-    stdout.writeln('======================================================================');
+    stdout.writeln(
+      '======================================================================',
+    );
     stdout.writeln(' ACR DAEMON SECURITY & NETWORK POLICY ($version)');
     stdout.writeln(' Target Daemon: ${client.baseUrl}');
-    stdout.writeln('======================================================================');
+    stdout.writeln(
+      '======================================================================',
+    );
     stdout.writeln(
       '  Cross-Origin Resource Sharing (CORS) : ${enableCors ? "\x1B[1;32m[ENABLED - $corsStatus]\x1B[0m" : "\x1B[1;31m[DISABLED]\x1B[0m"}',
     );
     stdout.writeln(
       '  Private Network Access (PNA)        : ${enablePna ? "\x1B[1;32m[ENABLED - $pnaStatus]\x1B[0m" : "\x1B[1;31m[DISABLED]\x1B[0m"}',
     );
-    stdout.writeln('----------------------------------------------------------------------');
-    stdout.writeln('  • PNA allows public HTTPS clients (e.g. Vercel) to discover local daemon.');
-    stdout.writeln('  • Use `acr config security --no-cors` or `--no-pna` to restrict access.');
-    stdout.writeln('======================================================================');
+    stdout.writeln(
+      '----------------------------------------------------------------------',
+    );
+    stdout.writeln(
+      '  • PNA allows public HTTPS clients (e.g. Vercel) to discover local daemon.',
+    );
+    stdout.writeln(
+      '  • Use `acr config security --no-cors` or `--no-pna` to restrict access.',
+    );
+    stdout.writeln(
+      '======================================================================',
+    );
   }
 }

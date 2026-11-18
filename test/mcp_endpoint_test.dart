@@ -2,9 +2,119 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:acr_cli/acr_cli.dart';
+import 'package:args/command_runner.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:test/test.dart';
 
 void main() {
+  group('Shared endpoint-vectors.json compliance', () {
+    final fixtureFile = File('test/fixtures/endpoint-vectors.json');
+    final vectors =
+        jsonDecode(fixtureFile.readAsStringSync()) as Map<String, dynamic>;
+
+    test(
+      'matches pinned remoteUrl, defaultLocalUrl, and Clerk OAuth contract',
+      () {
+        expect(McpEndpoint.remoteUrl, equals(vectors['remoteUrl']));
+        expect(McpEndpoint.defaultLocalUrl, equals(vectors['defaultLocalUrl']));
+        final oauth = vectors['oauth'] as Map<String, dynamic>;
+        expect(McpEndpoint.clerkIssuer, equals(oauth['issuer']));
+        expect(
+          McpEndpoint.requiredOAuthScopes,
+          equals(List<String>.from(oauth['scopesSupported'] as List)),
+        );
+      },
+    );
+
+    test('passes all validateLocal vectors from endpoint-vectors.json', () {
+      final cases = vectors['validateLocal'] as List<dynamic>;
+      for (final rawCase in cases) {
+        final c = rawCase as Map<String, dynamic>;
+        final name = c['name'] as String;
+        final input = c['input'] as String;
+        final valid = c['valid'] as bool;
+        if (valid) {
+          expect(
+            McpEndpoint.validateLocal(input),
+            equals(c['normalized']),
+            reason: 'validateLocal vector "$name" failed',
+          );
+        } else {
+          expect(
+            () => McpEndpoint.validateLocal(input),
+            throwsFormatException,
+            reason: 'validateLocal vector "$name" should reject $input',
+          );
+        }
+      }
+    });
+
+    test('passes all validateRemote vectors from endpoint-vectors.json', () {
+      final cases = vectors['validateRemote'] as List<dynamic>;
+      for (final rawCase in cases) {
+        final c = rawCase as Map<String, dynamic>;
+        final name = c['name'] as String;
+        final input = c['input'] as String;
+        final valid = c['valid'] as bool;
+        if (valid) {
+          expect(
+            () => McpEndpoint.validateRemote(input),
+            returnsNormally,
+            reason: 'validateRemote vector "$name" failed',
+          );
+        } else {
+          expect(
+            () => McpEndpoint.validateRemote(input),
+            throwsFormatException,
+            reason: 'validateRemote vector "$name" should reject $input',
+          );
+        }
+      }
+    });
+
+    test('passes all resolveMode vectors from endpoint-vectors.json', () {
+      final cases = vectors['resolveMode'] as List<dynamic>;
+      for (final rawCase in cases) {
+        final c = rawCase as Map<String, dynamic>;
+        final name = c['name'] as String;
+        final override = c['override'] as String;
+        final entitlement = c['entitlement'] as String;
+        final localUrl = c['localUrl'] as String;
+        final expectError = c['expectError'] as bool;
+        if (expectError) {
+          expect(
+            () => McpEndpoint.resolve(
+              override: override,
+              entitlement: entitlement,
+              localUrl: localUrl,
+              environment: const {},
+            ),
+            throwsA(anyOf(isA<FormatException>(), isA<ArgumentError>())),
+            reason: 'resolveMode vector "$name" should throw',
+          );
+        } else {
+          final res = McpEndpoint.resolve(
+            override: override,
+            entitlement: entitlement,
+            localUrl: localUrl,
+            environment: const {},
+          );
+          expect(
+            res.mode.name,
+            equals(c['expectMode']),
+            reason: 'resolveMode vector "$name" mode mismatch',
+          );
+          expect(
+            res.url,
+            equals(c['expectUrl']),
+            reason: 'resolveMode vector "$name" url mismatch',
+          );
+        }
+      }
+    });
+  });
+
   group('McpEndpoint URL validation', () {
     test('validateRemote accepts pinned remote URL variants and rejects lookalikes', () {
       expect(
@@ -334,5 +444,72 @@ void main() {
         }
       },
     );
+
+    test('LoginCommand blocks RFC 9728 redirects and resource mismatches without saving session', () async {
+      final tempHome = Directory.systemTemp.createTempSync('acr_login_sec_');
+      try {
+        final redirectClient = MockClient((req) async {
+          expect(req.followRedirects, isFalse);
+          expect(req.maxRedirects, equals(0));
+          return http.Response(
+            '',
+            302,
+            headers: {'location': 'https://evil.example/metadata'},
+          );
+        });
+        final runnerRedirect = CommandRunner('acr', 'test')
+          ..addCommand(LoginCommand(httpClient: redirectClient));
+        final redirectExit = await runnerRedirect.run([
+          'login',
+          '--home-dir',
+          tempHome.path,
+        ]);
+        expect(redirectExit, isNot(equals(0)));
+        expect(McpEndpoint.loadSession(homeDir: tempHome.path), isNull);
+
+        final mismatchClient = MockClient((req) async {
+          return http.Response(
+            jsonEncode({
+              'resource': 'https://evil.example/mcp',
+              'authorization_servers': ['https://clerk.agentchatrooms.dev'],
+            }),
+            200,
+          );
+        });
+        final runnerMismatch = CommandRunner('acr', 'test')
+          ..addCommand(LoginCommand(httpClient: mismatchClient));
+        final mismatchExit = await runnerMismatch.run([
+          'login',
+          '--home-dir',
+          tempHome.path,
+        ]);
+        expect(mismatchExit, isNot(equals(0)));
+        expect(McpEndpoint.loadSession(homeDir: tempHome.path), isNull);
+
+        final validClient = MockClient((req) async {
+          return http.Response(
+            jsonEncode({
+              'resource': 'https://mcp.agentchatrooms.dev/mcp',
+              'authorization_servers': ['https://clerk.agentchatrooms.dev'],
+            }),
+            200,
+          );
+        });
+        final runnerValid = CommandRunner('acr', 'test')
+          ..addCommand(LoginCommand(httpClient: validClient));
+        final validExit = await runnerValid.run([
+          'login',
+          '--home-dir',
+          tempHome.path,
+        ]);
+        expect(validExit, equals(0));
+        final saved = McpEndpoint.loadSession(homeDir: tempHome.path);
+        expect(saved, isNotNull);
+        expect(saved!.scopes, equals(['profile', 'email']));
+        expect(saved.resource, equals('https://mcp.agentchatrooms.dev/mcp'));
+      } finally {
+        tempHome.deleteSync(recursive: true);
+      }
+    });
   });
 }

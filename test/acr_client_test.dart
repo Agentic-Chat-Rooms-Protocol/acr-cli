@@ -12,6 +12,33 @@ void main() {
       final client = AcrClient(environment: const {}, homeDir: '');
       expect(client.baseUrl, equals('http://127.0.0.1:20443'));
       expect(client.apiToken, isNull);
+
+      final blankBase = AcrClient(
+        baseUrl: '   ',
+        environment: const {},
+        homeDir: '',
+      );
+      expect(blankBase.baseUrl, equals('http://127.0.0.1:20443'));
+    });
+
+    test('falls back to HOME when USERPROFILE is empty', () {
+      final tempHome = Directory.systemTemp.createTempSync(
+        'acr_home_fallback_',
+      );
+      try {
+        final acrDir = Directory(
+          '${tempHome.path}${Platform.pathSeparator}.acr',
+        )..createSync(recursive: true);
+        File('${acrDir.path}${Platform.pathSeparator}api-token')
+            .writeAsStringSync('home-fallback-token\n');
+
+        final client = AcrClient(
+          environment: {'USERPROFILE': '', 'HOME': tempHome.path},
+        );
+        expect(client.apiToken, equals('home-fallback-token'));
+      } finally {
+        tempHome.deleteSync(recursive: true);
+      }
     });
 
     test('loads token from ACR_API_TOKEN env var before ~/.acr/api-token', () {

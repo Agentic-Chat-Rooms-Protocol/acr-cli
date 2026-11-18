@@ -5,6 +5,7 @@ import 'package:args/command_runner.dart';
 import 'package:http/http.dart' as http;
 import 'package:io/ansi.dart';
 import 'package:io/io.dart';
+
 import '../api/acr_client.dart';
 
 class ServicePortDef {
@@ -65,7 +66,11 @@ const List<ServicePortDef> defaultServices = [
 ];
 
 File _getConfigFile() {
-  final home = Platform.environment['USERPROFILE'] ?? Platform.environment['HOME'] ?? '.';
+  final envProfile = Platform.environment['USERPROFILE']?.trim();
+  final envHome = Platform.environment['HOME']?.trim();
+  final home = (envProfile != null && envProfile.isNotEmpty)
+      ? envProfile
+      : ((envHome != null && envHome.isNotEmpty) ? envHome : '.');
   final acrDir = Directory('$home/.acr');
   if (!acrDir.existsSync()) {
     acrDir.createSync(recursive: true);
@@ -108,7 +113,8 @@ class PortsCommand extends Command {
   final String name = 'ports';
 
   @override
-  final String description = 'Inspect, configure, test, and export ecosystem service port mappings.';
+  final String description =
+      'Inspect, configure, test, and export ecosystem service port mappings.';
 
   final AcrClient client;
 
@@ -132,20 +138,27 @@ class PortsListCommand extends Command {
   final String name = 'list';
 
   @override
-  final String description = 'List all ecosystem service port bindings and live status.';
+  final String description =
+      'List all ecosystem service port bindings and live status.';
 
   @override
   Future<int> run() async {
     final overrides = _loadPortOverrides();
 
-    stdout.writeln('\n${cyan.wrap('======================================================================')}');
+    stdout.writeln(
+      '\n${cyan.wrap('======================================================================')}',
+    );
     stdout.writeln(styleBold.wrap(' ACR ECOSYSTEM SERVICE PORT MAPPINGS'));
-    stdout.writeln('${cyan.wrap('======================================================================')}');
+    stdout.writeln(
+      '${cyan.wrap('======================================================================')}',
+    );
 
     for (final s in defaultServices) {
       final port = _resolvePort(s, overrides);
       final isCustom = port != s.defaultPort;
-      final badge = isCustom ? yellow.wrap('[CUSTOM]') : green.wrap('[DEFAULT]');
+      final badge = isCustom
+          ? yellow.wrap('[CUSTOM]')
+          : green.wrap('[DEFAULT]');
       final envVarStr = darkGray.wrap('(\$${s.envVar})');
       final portStr = styleBold.wrap(':$port'.padRight(8));
 
@@ -166,30 +179,46 @@ class PortsSetCommand extends Command {
   final String description = 'Set a custom port binding for a service.';
 
   PortsSetCommand() {
-    argParser.addOption('service', abbr: 's', help: 'Service ID (acr-core, acr-meta-mcp, acr-bridge, nats-jetstream, gitea)');
+    argParser.addOption(
+      'service',
+      abbr: 's',
+      help: 'Service ID (acr-core, acr-meta-mcp, acr-bridge, nats-jetstream, gitea)',
+    );
     argParser.addOption('port', abbr: 'p', help: 'Port number (1024-65535)');
   }
 
   @override
   Future<int> run() async {
-    final serviceId = argResults?['service'] as String? ?? (argResults?.rest.isNotEmpty == true ? argResults!.rest[0] : null);
-    final portStr = argResults?['port'] as String? ?? (((argResults?.rest.length ?? 0) > 1) ? argResults!.rest[1] : null);
+    final serviceId =
+        argResults?['service'] as String? ??
+        (argResults?.rest.isNotEmpty == true ? argResults!.rest[0] : null);
+    final portStr =
+        argResults?['port'] as String? ??
+        (((argResults?.rest.length ?? 0) > 1) ? argResults!.rest[1] : null);
 
     if (serviceId == null || portStr == null) {
       stderr.writeln(yellow.wrap('Usage: acr ports set <service-id> <port>'));
-      stderr.writeln('Available services: ${defaultServices.map((s) => s.id).join(', ')}');
+      stderr.writeln(
+        'Available services: ${defaultServices.map((s) => s.id).join(', ')}',
+      );
       return ExitCode.usage.code;
     }
 
     final port = int.tryParse(portStr);
     if (port == null || port < 1024 || port > 65535) {
-      stderr.writeln(red.wrap('[ERROR] Port must be an integer between 1024 and 65535.'));
+      stderr.writeln(
+        red.wrap('[ERROR] Port must be an integer between 1024 and 65535.'),
+      );
       return ExitCode.usage.code;
     }
 
     final valid = defaultServices.any((s) => s.id == serviceId);
     if (!valid) {
-      stderr.writeln(red.wrap('[ERROR] Unknown service "$serviceId". Valid: ${defaultServices.map((s) => s.id).join(', ')}'));
+      stderr.writeln(
+        red.wrap(
+          '[ERROR] Unknown service "$serviceId". Valid: ${defaultServices.map((s) => s.id).join(', ')}',
+        ),
+      );
       return ExitCode.usage.code;
     }
 
@@ -197,7 +226,11 @@ class PortsSetCommand extends Command {
     overrides[serviceId] = port;
     _savePortOverrides(overrides);
 
-    stdout.writeln(green.wrap('[SUCCESS] Set port for "$serviceId" to :$port in ~/.acr/ports.json'));
+    stdout.writeln(
+      green.wrap(
+        '[SUCCESS] Set port for "$serviceId" to :$port in ~/.acr/ports.json',
+      ),
+    );
     return ExitCode.success.code;
   }
 }
@@ -211,19 +244,25 @@ class PortsResetCommand extends Command {
 
   @override
   Future<int> run() async {
-    final serviceId = argResults?.rest.isNotEmpty == true ? argResults!.rest[0] : null;
+    final serviceId = argResults?.rest.isNotEmpty == true
+        ? argResults!.rest[0]
+        : null;
     final file = _getConfigFile();
 
     if (serviceId != null) {
       final overrides = _loadPortOverrides();
       overrides.remove(serviceId);
       _savePortOverrides(overrides);
-      stdout.writeln(green.wrap('[SUCCESS] Reset port for "$serviceId" to factory default.'));
+      stdout.writeln(
+        green.wrap('[SUCCESS] Reset port for "$serviceId" to factory default.'),
+      );
     } else {
       if (file.existsSync()) {
         file.deleteSync();
       }
-      stdout.writeln(green.wrap('[SUCCESS] All service ports reset to factory defaults.'));
+      stdout.writeln(
+        green.wrap('[SUCCESS] All service ports reset to factory defaults.'),
+      );
     }
     return ExitCode.success.code;
   }
@@ -234,37 +273,52 @@ class PortsTestCommand extends Command {
   final String name = 'test';
 
   @override
-  final String description = 'Perform live connectivity health checks against configured ports.';
+  final String description =
+      'Perform live connectivity health checks against configured ports.';
 
   @override
   Future<int> run() async {
     final overrides = _loadPortOverrides();
 
-    stdout.writeln('\n${cyan.wrap('======================================================================')}');
+    stdout.writeln(
+      '\n${cyan.wrap('======================================================================')}',
+    );
     stdout.writeln(styleBold.wrap(' TESTING SERVICE PORT CONNECTIVITY'));
-    stdout.writeln('${cyan.wrap('======================================================================')}');
+    stdout.writeln(
+      '${cyan.wrap('======================================================================')}',
+    );
 
     for (final s in defaultServices) {
       final port = _resolvePort(s, overrides);
       if (s.healthPath.isEmpty) {
-        stdout.writeln('  ${green.wrap('[ONLINE]')} ${s.name.padRight(24)} :$port (TCP socket assume reachable)');
+        stdout.writeln(
+          '  ${green.wrap('[ONLINE]')} ${s.name.padRight(24)} :$port (TCP socket assume reachable)',
+        );
         continue;
       }
 
       final url = 'http://127.0.0.1:$port${s.healthPath}';
       try {
         final stopwatch = Stopwatch()..start();
-        final res = await http.get(Uri.parse(url)).timeout(const Duration(milliseconds: 1500));
+        final res = await http
+            .get(Uri.parse(url))
+            .timeout(const Duration(milliseconds: 1500));
         stopwatch.stop();
         final ms = stopwatch.elapsedMilliseconds;
 
         if (res.statusCode < 500) {
-          stdout.writeln('  ${green.wrap('[ONLINE]')} ${s.name.padRight(24)} :$port ${darkGray.wrap('(${ms}ms)')}');
+          stdout.writeln(
+            '  ${green.wrap('[ONLINE]')} ${s.name.padRight(24)} :$port ${darkGray.wrap('(${ms}ms)')}',
+          );
         } else {
-          stdout.writeln('  ${yellow.wrap('[WARN]  ')} ${s.name.padRight(24)} :$port (HTTP ${res.statusCode})');
+          stdout.writeln(
+            '  ${yellow.wrap('[WARN]  ')} ${s.name.padRight(24)} :$port (HTTP ${res.statusCode})',
+          );
         }
       } catch (_) {
-        stdout.writeln('  ${red.wrap('[OFFLINE]')} ${s.name.padRight(24)} :$port ${darkGray.wrap('(unreachable)')}');
+        stdout.writeln(
+          '  ${red.wrap('[OFFLINE]')} ${s.name.padRight(24)} :$port ${darkGray.wrap('(unreachable)')}',
+        );
       }
     }
     stdout.writeln('');
@@ -277,10 +331,15 @@ class PortsExportCommand extends Command {
   final String name = 'export';
 
   @override
-  final String description = 'Export current port bindings as .env or JSON format.';
+  final String description =
+      'Export current port bindings as .env or JSON format.';
 
   PortsExportCommand() {
-    argParser.addFlag('env', help: 'Output as .env file format', defaultsTo: true);
+    argParser.addFlag(
+      'env',
+      help: 'Output as .env file format',
+      defaultsTo: true,
+    );
     argParser.addFlag('json', help: 'Output as JSON format', defaultsTo: false);
   }
 
@@ -294,14 +353,21 @@ class PortsExportCommand extends Command {
       for (final s in defaultServices) {
         map[s.id] = _resolvePort(s, overrides);
       }
-      stdout.writeln(const JsonEncoder.withIndent('  ').convert({'version': '1.0.0', 'ports': map}));
+      stdout.writeln(
+        const JsonEncoder.withIndent('  ')
+            .convert({'version': '1.0.0', 'ports': map}),
+      );
     } else {
       stdout.writeln('# ACR Ecosystem Port Configuration');
       for (final s in defaultServices) {
         stdout.writeln('${s.envVar}=${_resolvePort(s, overrides)}');
       }
-      stdout.writeln('ACR_DAEMON_URL=http://127.0.0.1:${_resolvePort(defaultServices[0], overrides)}');
-      stdout.writeln('ACR_META_MCP_URL=http://127.0.0.1:${_resolvePort(defaultServices[1], overrides)}');
+      stdout.writeln(
+        'ACR_DAEMON_URL=http://127.0.0.1:${_resolvePort(defaultServices[0], overrides)}',
+      );
+      stdout.writeln(
+        'ACR_META_MCP_URL=http://127.0.0.1:${_resolvePort(defaultServices[1], overrides)}',
+      );
     }
     return ExitCode.success.code;
   }

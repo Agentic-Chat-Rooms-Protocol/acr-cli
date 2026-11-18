@@ -16,9 +16,7 @@ void main() {
 
     test('Skips rendering and backs off wake interval when state is clean', () {
       int renderCalls = 0;
-      final loop = AdaptiveRenderLoop(
-        onRender: () => renderCalls++,
-      );
+      final loop = AdaptiveRenderLoop(onRender: () => renderCalls++);
 
       // Cycle 1: Clean skip, interval backs off from 66 to 99ms
       expect(loop.tick(), isFalse);
@@ -44,9 +42,7 @@ void main() {
 
     test('Executes render and snaps back to 66ms when marked dirty', () {
       int renderCalls = 0;
-      final loop = AdaptiveRenderLoop(
-        onRender: () => renderCalls++,
-      );
+      final loop = AdaptiveRenderLoop(onRender: () => renderCalls++);
 
       // Backoff to 500ms
       for (int i = 0; i < 6; i++) {

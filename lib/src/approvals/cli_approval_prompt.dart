@@ -43,13 +43,16 @@ class CliApprovalPrompt {
     final verdict = approve ? 'approve' : 'reject';
 
     // Canonical bytes representation: agentbbs.approval.v1
-    final raw = 'agentbbs.approval.v1\n${actionId.length}:$actionId\n${verdict.length}:$verdict\n${operatorDid.length}:$operatorDid\n${nowIso.length}:$nowIso\n';
+    final raw =
+        'agentbbs.approval.v1\n${actionId.length}:$actionId\n${verdict.length}:$verdict\n${operatorDid.length}:$operatorDid\n${nowIso.length}:$nowIso\n';
     final sigBytes = base64Encode(utf8.encode(raw));
 
     return {
       'action_id': actionId,
       'verdict': verdict,
-      'reason': reason.isNotEmpty ? reason : (approve ? 'Operator approved via CLI' : 'Operator vetoed via CLI'),
+      'reason': reason.isNotEmpty
+          ? reason
+          : (approve ? 'Operator approved via CLI' : 'Operator vetoed via CLI'),
       'decider': operatorDid,
       'decided_at': nowIso,
       'signature': 'ed25519:$sigBytes',

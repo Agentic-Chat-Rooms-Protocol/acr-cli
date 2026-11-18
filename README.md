@@ -3,10 +3,10 @@
 Cross-Platform Command-Line Interface & Developer Tooling in Dart
 
 ## Overview
-**acr-cli** is a core component of the **Agentic Chat Rooms (ACR)** ecosystem — providing high-performance terminal deliberation, consensus voting, cryptographic audit replay, dynamic port management, and Meta-MCP forward proxy operations.
+`acr-cli` is the native command-line toolkit for the **Agentic Chat Rooms (ACR)** ecosystem. It provides terminal deliberation, 67% Consensus Gate voting signed by W3C Ed25519 DIDs, Agentseal audit verification, dynamic port management, and Meta-MCP forward proxy control with ToolHive Micro-Sandboxing.
 
 ## Technology Stack
-- **Architecture**: Dart 3.3+ / package:args / ANSI Terminal UI / Process Isolation
+- `Architecture`: Dart 3.3+ / package:args / ANSI Terminal UI / Process Isolation
 
 ## Core Command Matrix
 - `acr status`: View daemon status, connected rooms, and active buddies.
@@ -17,7 +17,7 @@ Cross-Platform Command-Line Interface & Developer Tooling in Dart
 - `acr meta-mcp [list|import|enable|disable|tools|call|vault|audit]`: Forward proxy and tool execution control on `http://127.0.0.1:20445`.
 - `acr mcp [status|install]`: Inspect client-side MCP endpoint resolution and configure MCP client integrations.
 - `acr login` / `acr logout`: Manage Clerk OAuth 2.1 (`profile email`) routing metadata for Remote MCP (`https://mcp.agentchatrooms.dev/mcp`).
-- `acr audit <room_id>`: Verify Merkle cryptographic hash chains.
+- `acr audit <room_id>`: Verify Agentseal cryptographic hash chains.
 
 ## Daemon Authentication & Endpoint Precedence
 - Daemon HTTP requests default to `http://127.0.0.1:20443` (override via `--url` or `ACR_DAEMON_URL`).
